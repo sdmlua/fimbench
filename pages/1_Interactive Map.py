@@ -318,23 +318,35 @@ def render_map():
 
     # Markers
     def popup_html(r: dict) -> str:
-        tif_url = r.get("tif_url"); json_url = r.get("json_url")
+        tif_url  = r.get("tif_url")
+        gpkg_url = r.get("gpkg_url") or r.get("gpkgurl")
+        json_url = r.get("json_url") or r.get("metadata_url")
+
+        # Prefer new names
+        basin = r.get("basin") or r.get("river_basin")
+        date_disp = r.get("date_ymd") or r.get("date_of_flood")
+
+        # HUC ID preference (8→12→6→4→2)
+        hucid = r.get("huc8") or r.get("huc12") or r.get("huc6") or r.get("huc4") or r.get("huc2")
+
         fields = [
             ("File Name", r.get("file_name")),
             ("Resolution (m)", r.get("resolution_m")),
             ("State", r.get("state")),
             ("Description", r.get("description")),
-            ("River Basin Name", r.get("river_basin")),
+            ("River Basin Name", basin),
             ("Source", r.get("source")),
-            ("Date", r.get("date_ymd") or r.get("date_raw")),
+            ("Date", date_disp),
             ("Return Period (years)", r.get("return_period") if r.get("tier") == "Tier_4" else None),
             ("Quality", r.get("quality")),
+            ("HUC ID", hucid),  # NEW
         ]
         rows = "".join(
             f"<tr><th style='text-align:left;vertical-align:top;padding-right:8px'>{k}</th>"
             f"<td style='text-align:left'>{'' if v is None else v}</td></tr>"
             for k, v in fields
         )
+
         refs = r.get("references") or []
         refs_html = ""
         if refs:
@@ -343,24 +355,43 @@ def render_map():
                 refs_html += f"<div style='margin-bottom:6px'>{ref}</div>"
             refs_html += "</div></div>"
 
-        buttons_html = ""
+        # Two-column buttons: left (TIF + JSON), right (GPKG)
+        left_btns = ""
         if tif_url:
-            buttons_html += f"""
+            left_btns += f"""
             <a href="{tif_url}" target="_blank" rel="noopener"
-               style="text-decoration:none;display:inline-block;background:#2563eb;color:#fff;
-                      padding:8px 10px;border-radius:6px;font-weight:600;margin-right:8px;">
-              ⬇ Download Benchmark FIM (.tif)
+            style="text-decoration:none;display:block;background:#2563eb;color:#fff;
+                    padding:8px 10px;border-radius:6px;font-weight:600;margin:0 0 8px;">
+            ⬇ Download Benchmark FIM (.tif)
             </a>"""
         if json_url:
-            buttons_html += f"""
+            left_btns += f"""
             <a href="{json_url}" target="_blank" rel="noopener"
-               style="text-decoration:none;display:inline-block;background:#059669;color:#fff;
-                      padding:8px 10px;border-radius:6px;font-weight:600;">
-              ⬇ Download Metadata (.json)
+            style="text-decoration:none;display:block;background:#059669;color:#fff;
+                    padding:8px 10px;border-radius:6px;font-weight:600;">
+            ⬇ Download Metadata (.json)
             </a>"""
 
+        right_btn = ""
+        if gpkg_url:
+            right_btn = f"""
+            <a href="{gpkg_url}" target="_blank" rel="noopener"
+            style="text-decoration:none;display:block;background:#374151;color:#fff;
+                    padding:8px 10px;border-radius:6px;font-weight:600;">
+            ⬇ Download Benchmark FIM (.gpkg)
+            </a>"""
+
+        buttons_html = ""
+        if left_btns or right_btn:
+            buttons_html = f"""
+            <div style="display:flex;gap:10px;margin-top:6px;">
+            <div style="flex:1;min-width:0;">{left_btns}</div>
+            <div style="flex:1;min-width:0;">{right_btn}</div>
+            </div>
+            """
+
         return f"""
-        <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; font-size:13px; max-width:420px">
+        <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; font-size:13px; max-width:520px">
             <table>{rows}</table>
             {'<hr style="margin:6px 0" />' if refs_html or buttons_html else ''}
             {refs_html}
@@ -377,8 +408,22 @@ def render_map():
     for r in filtered:
         if count >= current_cap:
             break
-        lat = float(r.get("centroid_lat", 0))
-        lon = float(r.get("centroid_lon", 0))
+
+        # Robust centroid handling
+        cl = r.get("centroid")
+        if not cl:
+            lon_fb = r.get("centroid_lon")
+            lat_fb = r.get("centroid_lat")
+            if lon_fb is not None and lat_fb is not None:
+                cl = [lon_fb, lat_fb]
+
+        # final guard
+        if not isinstance(cl, (list, tuple)) or len(cl) < 2 or cl[0] is None or cl[1] is None:
+            cl = [0.0, 0.0]
+
+        lon = float(cl[0] or 0.0)
+        lat = float(cl[1] or 0.0)
+        
         color = TIER_COLORS.get(r.get("tier"), DEFAULT_TIER_COLOR)
         folium.CircleMarker(
             location=[lat, lon],

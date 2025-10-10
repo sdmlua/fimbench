@@ -27,6 +27,25 @@ _BLOCK_COMMENT_RE  = re.compile(r'/\*.*?\*/', re.DOTALL)
 _HUC_LEADING0_RE   = re.compile(r'"(HUC\d{1,2})"\s*:\s*(0\d+)(\s*[,\}\]])')
 _SMART_QUOTES = {u"\u201c": '"', u"\u201d": '"', u"\u2018": "'", u"\u2019": "'"}
 
+_GPKG_SUFFIX_RE = re.compile(r'_(BM|FIM|MASK)$', re.IGNORECASE)
+
+def make_gpkg_key(folder: str, file_name: Optional[str]) -> Optional[str]:
+    """
+    From a TIF file name like ..._BM.tif, return {folder}/{base_with_AOI}.gpkg
+    Rules:
+      - strip extension
+      - if base ends with _BM/_FIM/_MASK → replace with _AOI
+      - else append _AOI
+    """
+    if not file_name:
+        return None
+    base_no_ext, _ = os.path.splitext(file_name)
+    if _GPKG_SUFFIX_RE.search(base_no_ext):
+        base_aoi = _GPKG_SUFFIX_RE.sub('_AOI', base_no_ext)
+    else:
+        base_aoi = f"{base_no_ext}_AOI"
+    return f"{folder}/{base_aoi}.gpkg"
+
 def s3_http_url(bucket: str, key: str) -> str:
     return f"https://{bucket}.s3.amazonaws.com/{key}"
 
@@ -161,13 +180,20 @@ def normalize_record(bucket: str, meta_key: str, meta: Dict[str, Any]) -> Tuple[
     folder = "/".join(parts[:-1])
 
     file_name = safe_get(meta, "File_Name", "File Name", "File name")
-    tif_url = s3_http_url(bucket, f"{folder}/{file_name}") if file_name else None
+    tif_url   = s3_http_url(bucket, f"{folder}/{file_name}") if file_name else None
+
+    # gpkg with _AOI suffix
+    gpkg_key = make_gpkg_key(folder, file_name)
+    gpkg_url = s3_http_url(bucket, gpkg_key) if gpkg_key else None
+
     json_url = s3_http_url(bucket, meta_key)
 
-    date_field = safe_get(meta,
-                          "Date of Flood /Synthetic Flooding Event (return period (years))",
-                          "Date of Flood",
-                          "Date")
+    date_field = safe_get(
+        meta,
+        "Date of Flood /Synthetic Flooding Event (return period (years))",
+        "Date of Flood",
+        "Date"
+    )
     date_ymd = extract_ymd_iso(date_field) if tier != "Tier_4" else None
     event_ts = int(date_ymd.replace("-", "")) if date_ymd else None
     return_period = extract_return_period(date_field) if tier == "Tier_4" else None
@@ -188,18 +214,17 @@ def normalize_record(bucket: str, meta_key: str, meta: Dict[str, Any]) -> Tuple[
         "feature_id": rec_id,
         "site_id": site,
         "tier": tier,
-        "site": site,   
+        "site": site,
 
         # dates
-        "event_date": date_ymd,
-        "event_ts": event_ts,       
-        "date_raw": date_field,
-        "return_period": return_period,
+        "date_ymd": date_ymd,
+        "date_of_flood": date_field, 
 
         # links / versioning
-        "metadata_url": json_url,
+        "json_url": json_url,
         "s3_prefix": folder,
         "tif_url": tif_url,
+        "gpkg_url": gpkg_url,
         "geom_version": 1,
 
         # context (compact)
@@ -208,8 +233,8 @@ def normalize_record(bucket: str, meta_key: str, meta: Dict[str, Any]) -> Tuple[
         "basin": safe_get(meta, "River Basin Name", "River Basin"),
         "source": safe_get(meta, "Source"),
         "access_rights": safe_get(meta, "Access_Rights"),
-        "quality": safe_get(meta, "Quality") or tier,   
-        **huc,  
+        "quality": safe_get(meta, "Quality") or tier,
+        **huc,
 
         # centroid for quick fly-to
         "centroid": [lon, lat],
@@ -218,6 +243,7 @@ def normalize_record(bucket: str, meta_key: str, meta: Dict[str, Any]) -> Tuple[
         "file_name": file_name,
         "references": refs,
         "s3_key": meta_key,
+        "return_period": return_period,
     }
 
     geom = meta.get("FIM_Geometry")
@@ -283,10 +309,7 @@ def main():
                             "feature_id": core["feature_id"],
                             "site_id": core["site_id"],
                             "tier": core["tier"],
-                            "event_date": core["event_date"],
-                            "event_ts": core["event_ts"],
-                            "metadata_url": core["metadata_url"],
-                            "s3_prefix": core["s3_prefix"],
+                            "event_date": core.get("date_ymd"),
                             "geom_version": core["geom_version"],
                             "resolution_m": core.get("resolution_m"),
                             "huc8": core.get("huc8"),
