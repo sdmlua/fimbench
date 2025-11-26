@@ -39,7 +39,7 @@ python fim_tiles.py \
   --s3-prefix FIM_Database/FIM_Viz \
   --upload-json-only
 
-ipload catalog core json only
+upload catalog core json only
 python fim_tiles.py \
   --catalog catalog_core.json \
   --out-dir out_tiles \
