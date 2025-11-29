@@ -19,6 +19,10 @@ DEFAULT_PREFIX = "FIM_Database/"
 SIMPLIFY_M     = 20.0  # meters
 MAX_STR_LEN    = 2000
 
+# Common RP values used in design standards for Tier 4
+_KNOWN_RP_VALUES = {2, 5, 10, 25, 50, 100, 200, 500, 1000}
+
+
 # Regex / helpers for lenient JSON
 _ymd_re = re.compile(r"(?<!\d)(\d{8})(?!\d)")
 _TRAILING_COMMA_RE = re.compile(r',(\s*[}\]])')            # ", }" or ", ]"
@@ -26,6 +30,25 @@ _LINE_COMMENT_RE   = re.compile(r'(^|[,{]\s*)//.*$', re.MULTILINE)
 _BLOCK_COMMENT_RE  = re.compile(r'/\*.*?\*/', re.DOTALL)
 _HUC_LEADING0_RE   = re.compile(r'"(HUC\d{1,2})"\s*:\s*(0\d+)(\s*[,\}\]])')
 _SMART_QUOTES = {u"\u201c": '"', u"\u201d": '"', u"\u2018": "'", u"\u2019": "'"}
+
+_GPKG_SUFFIX_RE = re.compile(r'_(BM|FIM|MASK)$', re.IGNORECASE)
+
+def make_gpkg_key(folder: str, file_name: Optional[str]) -> Optional[str]:
+    """
+    From a TIF file name like ..._BM.tif, return {folder}/{base_with_AOI}.gpkg
+    Rules:
+      - strip extension
+      - if base ends with _BM/_FIM/_MASK → replace with _AOI
+      - else append _AOI
+    """
+    if not file_name:
+        return None
+    base_no_ext, _ = os.path.splitext(file_name)
+    if _GPKG_SUFFIX_RE.search(base_no_ext):
+        base_aoi = _GPKG_SUFFIX_RE.sub('_AOI', base_no_ext)
+    else:
+        base_aoi = f"{base_no_ext}_AOI"
+    return f"{folder}/{base_aoi}.gpkg"
 
 def s3_http_url(bucket: str, key: str) -> str:
     return f"https://{bucket}.s3.amazonaws.com/{key}"
@@ -155,32 +178,107 @@ def list_meta_keys(s3, bucket: str, prefix: str) -> List[str]:
 
 # NORMALIZATION
 def normalize_record(bucket: str, meta_key: str, meta: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[Dict]]:
-    parts = meta_key.split("/")
-    tier = norm_tier(next((p for p in parts if p.lower().startswith("tier")), "Unknown_Tier"))
-    site = parts[-2] if len(parts) >= 2 else "Unknown_Site"
+    parts  = meta_key.split("/")
+    tier   = norm_tier(next((p for p in parts if p.lower().startswith("tier")), "Unknown_Tier"))
+    site   = parts[-2] if len(parts) >= 2 else "Unknown_Site"
     folder = "/".join(parts[:-1])
 
     file_name = safe_get(meta, "File_Name", "File Name", "File name")
-    tif_url = s3_http_url(bucket, f"{folder}/{file_name}") if file_name else None
+    tif_url   = s3_http_url(bucket, f"{folder}/{file_name}") if file_name else None
+
+    # gpkg with _AOI suffix
+    gpkg_key = make_gpkg_key(folder, file_name)
+    gpkg_url = s3_http_url(bucket, gpkg_key) if gpkg_key else None
+
     json_url = s3_http_url(bucket, meta_key)
 
-    date_field = safe_get(meta,
-                          "Date of Flood /Synthetic Flooding Event (return period (years))",
-                          "Date of Flood",
-                          "Date")
+    # Dates / RP fields
+    date_field = safe_get(
+        meta,
+        "Date of Flood /Synthetic Flooding Event (return period (years))",
+        "Date of Flood",
+        "Date of the Flooding Event",
+        "Date",
+    )
+
+    # Real events (non Tier_4) keep a date; Tier_4 is synthetic
     date_ymd = extract_ymd_iso(date_field) if tier != "Tier_4" else None
     event_ts = int(date_ymd.replace("-", "")) if date_ymd else None
-    return_period = extract_return_period(date_field) if tier == "Tier_4" else None
 
+    # Tier_4 return period
+    return_period: Optional[int] = None
+    if tier == "Tier_4":
+        #Prefer explicit metadata keys
+        rp_field = safe_get(
+            meta,
+            "Synthetic Flooding Event (return period (years))",
+            "Synthetic Flooding Event (return period years)",
+            "Return period (years)",
+            "Return Period (years)",
+            "Return Period",
+            "Return_Period",
+            "return_period",
+            "RP",
+            "rp",
+        )
+        if rp_field is not None:
+            return_period = extract_return_period(rp_field)
+            
+        if return_period is None and file_name:
+            tokens = re.split(r"[_\-]", os.path.splitext(file_name)[0])
+            for tok in tokens:
+                if tok.isdigit():
+                    try:
+                        v = int(tok)
+                        if v in _KNOWN_RP_VALUES:
+                            return_period = v
+                            break
+                    except Exception:
+                        pass
+
+        if return_period is None:
+            m = re.search(r"/BLE_(\d{2,4})_", meta_key)
+            if m:
+                try:
+                    v = int(m.group(1))
+                    if v in _KNOWN_RP_VALUES:
+                        return_period = v
+                except Exception:
+                    pass
+
+    # Common fields
     lon, lat = centroid_from_meta(meta)
-    refs = coerce_list(meta.get("References"))
+    refs     = coerce_list(meta.get("References"))
 
     huc: Dict[str, str] = {}
-    for k in ("HUC2","HUC4","HUC6","HUC8","HUC10","HUC12"):
+    for k in ("HUC2", "HUC4", "HUC6", "HUC8", "HUC10", "HUC12"):
         if k in meta and meta[k] is not None:
             huc[k.lower()] = str(meta[k])
 
     rec_id = stable_id(tier, site, file_name or meta_key)
+
+    # Geometry
+    geom = meta.get("FIM_Geometry")
+
+    # BBOX from FIM_Geometry or Extent fallback 
+    bbox = None
+    if geom:
+        try:
+            g = shape(geom)
+            if not g.is_empty:
+                xmin, ymin, xmax, ymax = g.bounds
+                bbox = [float(xmin), float(ymin), float(xmax), float(ymax)]
+        except Exception:
+            bbox = None
+
+    if bbox is None:
+        ex = meta.get("Extent") or {}
+        try:
+            xmin, ymin, xmax, ymax = ex.get("xmin"), ex.get("ymin"), ex.get("xmax"), ex.get("ymax")
+            if all(v is not None for v in (xmin, ymin, xmax, ymax)):
+                bbox = [float(xmin), float(ymin), float(xmax), float(ymax)]
+        except Exception:
+            pass
 
     core = {
         # stable identifiers
@@ -188,18 +286,17 @@ def normalize_record(bucket: str, meta_key: str, meta: Dict[str, Any]) -> Tuple[
         "feature_id": rec_id,
         "site_id": site,
         "tier": tier,
-        "site": site,   
+        "site": site,
 
         # dates
-        "event_date": date_ymd,
-        "event_ts": event_ts,       
-        "date_raw": date_field,
-        "return_period": return_period,
+        "date_ymd": date_ymd,
+        "date_of_flood": date_field,
 
         # links / versioning
-        "metadata_url": json_url,
+        "json_url": json_url,
         "s3_prefix": folder,
         "tif_url": tif_url,
+        "gpkg_url": gpkg_url,
         "geom_version": 1,
 
         # context (compact)
@@ -208,8 +305,8 @@ def normalize_record(bucket: str, meta_key: str, meta: Dict[str, Any]) -> Tuple[
         "basin": safe_get(meta, "River Basin Name", "River Basin"),
         "source": safe_get(meta, "Source"),
         "access_rights": safe_get(meta, "Access_Rights"),
-        "quality": safe_get(meta, "Quality") or tier,   
-        **huc,  
+        "quality": safe_get(meta, "Quality") or tier,
+        **huc,
 
         # centroid for quick fly-to
         "centroid": [lon, lat],
@@ -218,9 +315,15 @@ def normalize_record(bucket: str, meta_key: str, meta: Dict[str, Any]) -> Tuple[
         "file_name": file_name,
         "references": refs,
         "s3_key": meta_key,
+        "return_period": return_period,
+
+        # convenience 
+        "event_ts": event_ts,
+
+        # bbox in WGS84
+        "bbox": bbox,
     }
 
-    geom = meta.get("FIM_Geometry")
     return core, geom
 
 # MAIN
@@ -283,10 +386,10 @@ def main():
                             "feature_id": core["feature_id"],
                             "site_id": core["site_id"],
                             "tier": core["tier"],
-                            "event_date": core["event_date"],
-                            "event_ts": core["event_ts"],
-                            "metadata_url": core["metadata_url"],
-                            "s3_prefix": core["s3_prefix"],
+                            "event_date": core.get("date_ymd"),
+                            "event_ts": core.get("event_ts"),           
+                            "metadata_url": core.get("json_url"),        
+                            "s3_prefix": core.get("s3_prefix"),       
                             "geom_version": core["geom_version"],
                             "resolution_m": core.get("resolution_m"),
                             "huc8": core.get("huc8"),
@@ -296,6 +399,7 @@ def main():
                             "access_rights": core.get("access_rights"),
                             "centroid": core.get("centroid"),
                             "bbox": bbox,
+                            "return_period": core.get("return_period"),
                         }
                     })
         except Exception as e:
@@ -327,7 +431,7 @@ def main():
             "feature_id","site_id","tier","event_date","event_ts",
             "metadata_url","s3_prefix","geom_version",
             "resolution_m","huc8","state","basin","source","access_rights",
-            "centroid","bbox"
+            "centroid","bbox", "return_period"
         ]
         cols_order = [c for c in cols_order if c in gdf.columns] + \
                      [c for c in gdf.columns if c not in cols_order and c != "geometry"]

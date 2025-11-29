@@ -9,6 +9,7 @@ One-stop utility to:
 - Emit a manifest + ready-to-paste Streamlit/Folium VectorGrid snippet
 
 USAGE (example):
+upload tiles only
 python fim_tiles.py \
   --geojson-in FIM_extents.geojson \
   --catalog catalog_core.json \
@@ -17,6 +18,35 @@ python fim_tiles.py \
   --s3-bucket sdmlab \
   --s3-prefix FIM_Database/FIM_Viz \
   --min-zoom 3 --max-zoom 14
+  
+upload tiles and json
+python fim_tiles.py \
+  --geojson-in FIM_extents.geojson \
+  --catalog catalog_core.json \
+  --include tif_url json_url \
+  --out-dir out_tiles \
+  --s3-bucket sdmlab \
+  --s3-prefix FIM_Database/FIM_Viz \
+  --min-zoom 3 --max-zoom 14 \
+  --upload-json --json-target both
+
+upload json (catalog + extents) only
+python fim_tiles.py \
+  --catalog catalog_core.json \
+  --geojson-in FIM_extents.geojson \
+  --out-dir out_tiles \
+  --s3-bucket sdmlab \
+  --s3-prefix FIM_Database/FIM_Viz \
+  --upload-json-only
+
+upload catalog core json only
+python fim_tiles.py \
+  --catalog catalog_core.json \
+  --out-dir out_tiles \
+  --s3-bucket sdmlab \
+  --s3-prefix FIM_Database/FIM_Viz \
+  --upload-json-only --json-target catalog
+
 
 Requirements:
   - Python: geopandas, shapely, pandas, boto3, pyogrio (recommended), pyarrow
@@ -53,6 +83,67 @@ def which_or_die(name: str, hint: str):
         sys.exit(2)
     return path
 
+# args
+def parse_args():
+    p = argparse.ArgumentParser(description="Build and upload FIM vector tiles to S3.")
+
+    # NOTE: not required=True anymore so JSON-only can run without sources
+    src = p.add_mutually_exclusive_group(required=False)
+    src.add_argument("--parquet", type=Path, help="Path to extents.parquet")
+    src.add_argument("--geojson-in", type=Path, help="Existing extents GeoJSON to tile")
+
+    p.add_argument("--catalog", type=Path, help="Path to catalog_core.json to merge/upload", default=None)
+    p.add_argument("--include", nargs="*", default=[], help="Extra fields from catalog to include in tiles (e.g., tif_url json_url)")
+
+    p.add_argument("--out-dir", type=Path, required=True, help="Output directory (mbtiles → tiles)")
+    p.add_argument("--layer-name", default="fim_extents", help="Vector tile layer name")
+    p.add_argument("--min-zoom", type=int, default=3)
+    p.add_argument("--max-zoom", type=int, default=14)
+    p.add_argument("--skip-extract", action="store_true", help="Do not explode MBTiles; serve with a tile server instead")
+    p.add_argument("--keep-temp", action="store_true", help="Keep fimextent.geojson")
+
+    # NEW: flexible JSON upload controls
+    p.add_argument("--upload-json", action="store_true",
+                   help="Also upload catalog/geojson JSONs along with tiles")
+    p.add_argument("--upload-json-only", action="store_true",
+                   help="Only upload JSONs (catalog/geojson) and exit (skip tiling)")
+    p.add_argument("--json-target", choices=["catalog", "extents", "both"], default="both",
+                   help="Which JSONs to upload (default: both)")
+
+    p.add_argument("--s3-bucket", type=str, help="S3 bucket to upload to")
+    p.add_argument("--s3-prefix", type=str, help="S3 prefix/folder (e.g., FIM_Database/FIM_Viz)")
+    return p.parse_args()
+
+# upload helpers
+def upload_json_file(path: Path, bucket: str, prefix: str, key_name: str):
+    if not path or not path.exists():
+        warn(f"File {path} not found — skipping upload for {key_name}")
+        return
+    s3 = boto3.client("s3")
+    ct = "application/geo+json" if path.suffix.lower() == ".geojson" else "application/json"
+    with open(path, "rb") as fh:
+        s3.put_object(Bucket=bucket, Key=f"{prefix}/{key_name}", Body=fh.read(), ContentType=ct)
+    info(f"Uploaded {path} → s3://{bucket}/{prefix}/{key_name}")
+
+def upload_selected_jsons(args, extents_path: Optional[Path]):
+    if not args.s3_bucket or not args.s3_prefix:
+        err("Both --s3-bucket and --s3-prefix are required to upload JSON files.")
+        sys.exit(2)
+
+    want_catalog = args.json_target in ("catalog", "both")
+    want_extents = args.json_target in ("extents", "both")
+
+    if want_catalog:
+        upload_json_file(args.catalog, args.s3_bucket, args.s3_prefix, "catalog_core.json")
+    if want_extents:
+        # prefer the minimized tmp extents if we built it; else fall back to user-provided --geojson-in
+        if extents_path:
+            upload_json_file(extents_path, args.s3_bucket, args.s3_prefix, "FIM_extents.geojson")
+        else:
+            upload_json_file(args.geojson_in, args.s3_bucket, args.s3_prefix, "FIM_extents.geojson")
+
+# rest of your original code 
+
 def prepare_input_geojson(
     parquet_path: Path | None,
     geojson_in: Path | None,
@@ -62,7 +153,7 @@ def prepare_input_geojson(
     keep_temp: bool
 ) -> Path:
     if parquet_path is None and geojson_in is None:
-        err("Provide either --parquet or --geojson-in")
+        err("Provide either --parquet or --geojson-in (unless using --upload-json-only).")
         sys.exit(2)
 
     # read
@@ -93,7 +184,7 @@ def prepare_input_geojson(
     if "site" not in gdf.columns:
         gdf["site"] = gdf["id"]
 
-    # optional catalog merge
+    # optional catalog merge (for tiles only)
     if catalog_json and include_fields:
         info(f"Merging catalog: {catalog_json} for fields {include_fields}")
         with open(catalog_json, "r", encoding="utf-8") as f:
@@ -155,13 +246,13 @@ def prepare_input_geojson(
     gdf["centroid"] = list(map(lambda x, y: [float(x), float(y)], cent.x, cent.y))
 
     # bounds
-    b = gdf.geometry.bounds  
+    b = gdf.geometry.bounds
     gdf["bbox"] = [
         [float(xmin), float(ymin), float(xmax), float(ymax)]
         for xmin, ymin, xmax, ymax in zip(b.minx, b.miny, b.maxx, b.maxy)
     ]
 
-    # write lean GeoJSON
+    # write lean GeoJSON for tippecanoe
     tmp_geojson = out_dir / "fimextent.geojson"
     tmp_geojson.parent.mkdir(parents=True, exist_ok=True)
     info(f"Writing GeoJSON for tippecanoe: {tmp_geojson}")
@@ -178,53 +269,18 @@ def prepare_input_geojson(
     cols = ["geometry"] + keep_props + extra
     gdf[cols].to_file(tmp_geojson, driver="GeoJSON")
 
-    return tmp_geojson if keep_temp else tmp_geojson
+    return tmp_geojson
 
-#Tiling the geojson file
-def info(msg: str): print(f"[INFO] {msg}")
-def warn(msg: str): print(f"[WARN] {msg}")
-def err(msg: str):  print(f"[ERROR] {msg}")
-def which_or_die(bin_name: str, install_hint: str) -> str:
-    path = shutil.which(bin_name)
-    if not path:
-        err(f"'{bin_name}' not found. {install_hint}")
-        sys.exit(2)
-    return path
-
-# Attributes we want available for filtering/UX in tiles
-REQUIRED_TILE_FIELDS = [
-    "feature_id", "site_id", "tier",
-    "event_date", "event_ts",
-    "metadata_url", "s3_prefix",
-    "geom_version",
-    "resolution_m", "huc8", "state", "basin", "source", "access_rights",
-    "centroid", "bbox"
-]
-
-def build_mbtiles(
-    in_geojson: Path,
-    out_mbtiles: Path,
-    layer_name: str,
-    min_z: int,
-    max_z: int,
-    include_fields: List[str],
-    extra_flags: Optional[List[str]] = None
-):
-    """
-    Build compact vector tiles from a merged GeoJSON for FIM polygons.
-    Uses a strict attribute whitelist to keep MBTiles small and filtering reliable.
-    """
+# tiling helpers unchanged…
+def build_mbtiles(in_geojson: Path, out_mbtiles: Path, layer_name: str, min_z: int, max_z: int, include_fields: List[str], extra_flags: Optional[List[str]] = None):
     tippecanoe = which_or_die("tippecanoe", "Install tippecanoe and ensure it is in PATH.")
     out_mbtiles.parent.mkdir(parents=True, exist_ok=True)
     info(f"Building MBTiles with tippecanoe → {out_mbtiles}")
 
-    # Whitelist properties: required and caller’s extras
-    keep = []
-    seen = set()
-    for f in REQUIRED_TILE_FIELDS + (include_fields or []):
+    keep, seen = [], set()
+    for f in ["feature_id","site_id","tier","event_date","event_ts","metadata_url","s3_prefix","geom_version","resolution_m","huc8","state","basin","source","access_rights","centroid","bbox"] + (include_fields or []):
         if f not in seen:
-            keep.append(f)
-            seen.add(f)
+            keep.append(f); seen.add(f)
 
     include_args = []
     for fld in keep:
@@ -248,36 +304,27 @@ def build_mbtiles(
         "--generate-ids",
         str(in_geojson)
     ]
-
     if extra_flags:
         cmd += extra_flags
-
     info(" ".join(cmd))
     subprocess.check_call(cmd)
     info("MBTiles built.")
 
 def extract_mbtiles_to_dir(mbtiles: Path, out_dir: Path):
-    """
-    Optional: explode MBTiles → filesystem z/x/y.pbf (for simple static hosting/tests).
-    """
     mbutil = shutil.which("mb-util")
     if not mbutil:
         err("`mb-util` not found. Install 'mbutil' (pip install mbutil), or rerun with --skip-extract.")
         sys.exit(2)
-
     if out_dir.exists():
         shutil.rmtree(out_dir)
-
     info(f"Extracting {mbtiles} → {out_dir}")
     cmd = [mbutil, "--image_format=pbf", str(mbtiles), str(out_dir)]
     info(" ".join(cmd))
     subprocess.check_call(cmd)
-
     if not any(out_dir.rglob("*.pbf")):
         warn("No PBF tiles extracted — check mb-util version or MBTiles content.")
     else:
         info("Extraction complete.")
-
 
 def upload_to_s3(local_tiles: Path, bucket: str, prefix: str):
     s3 = boto3.client("s3")
@@ -297,31 +344,28 @@ def upload_to_s3(local_tiles: Path, bucket: str, prefix: str):
                 s3.put_object(Bucket=bucket, Key=key, Body=fh.read(), **guess_headers(fpath))
     return f"https://{bucket}.s3.amazonaws.com/{prefix}/tiles/{{z}}/{{x}}/{{y}}.pbf"
 
-def parse_args():
-    p = argparse.ArgumentParser(description="Build and upload FIM vector tiles to S3.")
-    src = p.add_mutually_exclusive_group(required=True)
-    src.add_argument("--parquet", type=Path, help="Path to extents.parquet")
-    src.add_argument("--geojson-in", type=Path, help="Existing extents GeoJSON to tile")
-
-    p.add_argument("--catalog", type=Path, help="Path to catalog_core.json to merge (by id)", default=None)
-    p.add_argument("--include", nargs="*", default=[], help="Extra fields from catalog to include (e.g., tif_url json_url)")
-
-    p.add_argument("--out-dir", type=Path, required=True, help="Output directory (mbtiles → tiles)")
-    p.add_argument("--layer-name", default="fim_extents", help="Vector tile layer name")
-    p.add_argument("--min-zoom", type=int, default=3)
-    p.add_argument("--max-zoom", type=int, default=14)
-    p.add_argument("--skip-extract", action="store_true", help="Do not explode MBTiles; serve with a tile server instead")
-    p.add_argument("--keep-temp", action="store_true", help="Keep fimextent.geojson")
-
-    p.add_argument("--s3-bucket", type=str, help="S3 bucket to upload tiles (optional)")
-    p.add_argument("--s3-prefix", type=str, help="S3 prefix/folder for tiles (e.g., FIM_Database/FIM_Viz)")
-    return p.parse_args()
-
+# main
 def main():
     args = parse_args()
+
+    # JSON-only mode (no sources required)
+    if args.upload_json_only:
+        if not args.s3_bucket or not args.s3_prefix:
+            err("Both --s3-bucket and --s3-prefix are required with --upload-json-only")
+            sys.exit(2)
+        upload_selected_jsons(args, extents_path=None)
+        info("Upload complete (JSON-only mode).")
+        sys.exit(0)
+
+    # Normal / tiling mode requires a source
+    if not args.parquet and not args.geojson_in:
+        err("Provide either --parquet or --geojson-in (or use --upload-json-only).")
+        sys.exit(2)
+
     out_dir: Path = args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    # build minimized extents geojson for tippecanoe
     tmp_geojson = prepare_input_geojson(
         parquet_path=args.parquet,
         geojson_in=args.geojson_in,
@@ -334,6 +378,7 @@ def main():
     out_mbtiles = out_dir / f"{args.layer_name}.mbtiles"
     tiles_dir   = out_dir / "tiles"
 
+    # tiles
     build_mbtiles(
         in_geojson=tmp_geojson,
         out_mbtiles=out_mbtiles,
@@ -357,6 +402,10 @@ def main():
             info(f"Tiles ready at: {tiles_dir.resolve().as_uri()}/{{z}}/{{x}}/{{y}}.pbf")
     else:
         info(f"Serve {out_mbtiles} via a tileserver")
+
+    # Optionally upload JSONs in the same run
+    if args.upload_json:
+        upload_selected_jsons(args, extents_path=tmp_geojson)
 
     if not args.keep_temp:
         try:
