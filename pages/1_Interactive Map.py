@@ -30,13 +30,13 @@ TILES_KEY = "FIM_Database/FIM_Viz/tiles"
 BASE_FEATURE_CAP = 10
 
 TIER_COLORS = {
-    "Tier_1": "#1b9e77",
-    "Tier_2": "#d95f02",
-    "Tier_3": "#7570b3",
-    "Tier_4": "#e7298a",
-    "Tier_5": "#66a61e",
+    "Tier_1": "#D3143E",
+    "Tier_2": "#f9b581",
+    "Tier_3": "#b5b0fd",
+    "Tier_4": "#0b5a90",
+    "Tier_5": "#87ed13",
 }
-DEFAULT_TIER_COLOR = "#2c7fb8"
+DEFAULT_TIER_COLOR = "#187fc4"
 
 BASEMAPS = {
     "OpenStreetMap": dict(tiles="OpenStreetMap", attr="© OpenStreetMap"),
@@ -100,28 +100,33 @@ class VectorGridProtobuf(MacroElement):
               if (ets < DATE_MIN || ets > DATE_MAX) return false;
             }
             return true;
-          }
+        }
 
-          var style = {};
-          style[lyrId] = function(props){
+            var style = {};
+            style[lyrId] = function(props){
             if (!matches(props)) {
                 return { stroke:false, fill:false, opacity:0, fillOpacity:0, weight:0 };
             }
-            var c = (props && props.tier && colorMap[props.tier]) ? colorMap[props.tier] : defaultC;
-            return {
-                stroke:true,       // no borders
-                weight:0.5,
-                color:c,
-                opacity:1,          // border invisible
-                fill:true,
-                fillColor:c,
-                fillOpacity:0.5,   // fill visible
-                lineCap:'round',
-                lineJoin:'round',
-                smoothFactor:10.0    // smooth geometry edges
-            };
 
-          };
+            // Tier-dependent border color
+            var borderColor = (props && props.tier && colorMap[props.tier]) ? colorMap[props.tier] : defaultC;
+
+            // All floods use the same blue fill (defaultC = your blue)
+            var fillColor = defaultC;
+
+            return {
+                stroke: true,
+                weight: 0.5,          // slightly thicker to make tier edges visible
+                color: borderColor,   // edge color changes by tier
+                opacity: 0.3,
+                fill: true,
+                fillColor: fillColor, // ALWAYS blue
+                fillOpacity: 0.6,
+                lineCap: 'round',
+                lineJoin: 'round',
+                smoothFactor: 10.0
+            };
+        };
 
           var grid = L.vectorGrid.protobuf(urlTpl, {
             vectorTileLayerStyles: style,
@@ -169,7 +174,7 @@ class VectorGridProtobuf(MacroElement):
         
 # Streamlit page boot
 st.set_page_config(page_title="Interactive FIM Vizualizer", page_icon="🌊", layout="wide")
-st.title("Benchmark FIMs")
+st.title("Benchmark FIMs DASHBOARD")
 
 # Session defaults
 ss = st.session_state
@@ -314,8 +319,6 @@ def render_map():
     bm = BASEMAPS[basemap_choice]
     folium.TileLayer(tiles=bm["tiles"], name=basemap_choice, control=False, attr=bm["attr"], show=True).add_to(m)
 
-    current_cap = feature_cap_by_zoom(float(ss.saved_zoom))
-
     # Markers
     def popup_html(r: dict) -> str:
         tif_url  = r.get("tif_url")
@@ -404,11 +407,8 @@ def render_map():
         show=True,
         disableClusteringAtZoom=10
     )
-    count = 0
+    
     for r in filtered:
-        if count >= current_cap:
-            break
-
         # Robust centroid handling
         cl = r.get("centroid")
         if not cl:
@@ -423,7 +423,7 @@ def render_map():
 
         lon = float(cl[0] or 0.0)
         lat = float(cl[1] or 0.0)
-        
+
         color = TIER_COLORS.get(r.get("tier"), DEFAULT_TIER_COLOR)
         folium.CircleMarker(
             location=[lat, lon],
@@ -431,7 +431,7 @@ def render_map():
             tooltip=f"{r.get('tier')} — {r.get('site')}",
             popup=folium.Popup(popup_html(r), max_width=500),
         ).add_to(markers_fg)
-        count += 1
+
     markers_fg.add_to(m)
 
     # Vector tiles hosting from s3
@@ -455,10 +455,16 @@ def render_map():
 
     # Legend
     legend_items = "".join(
-        f"<div style='display:flex;align-items:center;margin-bottom:6px'>"
-        f"<span style='display:inline-block;width:16px;height:16px;background:{TIER_COLORS.get(t, DEFAULT_TIER_COLOR)};"
-        f"border:1px solid #000;margin-right:8px'></span>"
-        f"<span style='font-size:14px'>{t}</span></div>"
+        (
+            lambda color: 
+            f"<div style='display:flex;align-items:center;margin-bottom:6px'>"
+            f"<span style='display:inline-block;width:16px;height:16px;"
+            f"background:{DEFAULT_TIER_COLOR};"     
+            f"border:2px solid {color};"          
+            f"border-radius:2px;"
+            f"margin-right:8px'></span>"
+            f"<span style='font-size:14px'>{t}</span></div>"
+        )(TIER_COLORS.get(t, DEFAULT_TIER_COLOR))
         for t in sorted(set(r.get("tier") for r in filtered))
     )
 
