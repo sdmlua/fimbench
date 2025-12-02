@@ -19,7 +19,10 @@ from jinja2 import Template
 import json
 
 from utilis.ui import inject_globalfont
+from utilis.home_page import apply_page_style
+
 inject_globalfont(font_size_px=18, sidebar_font_size_px=20)
+apply_page_style()
 
 # CONFIG
 BUCKET    = "sdmlab"
