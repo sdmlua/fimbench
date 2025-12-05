@@ -7,10 +7,13 @@ Date 29 November, 2025
 """
 import streamlit as st
 from utilis.ui import inject_globalfont
+from utilis.home_page import apply_page_style
+
 st.set_page_config(layout="wide")
 
 # Global font styling
 inject_globalfont(font_size_px=18, sidebar_font_size_px=20)
+apply_page_style()
 
 #Page title and intro
 st.title("Accessing Benchmark Data")
