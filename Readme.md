@@ -11,17 +11,20 @@ This repository provides a curated collection of benchmark **Flood Inundation Ma
 
 ### **FIM Visualizer Interface**
 
-The FIM Visualizer provides an interactive interface to browse and explore FIM benchmark datasets across all tiers of the database.  
+The FIM Visualizer offers an interactive platform for browsing and exploring benchmark FIM datasets across all quality tiers.👉 **Click here to open the FIMbench Visualizer**
 A preview of the interface is shown below:
 
-The Interface of FIM Vizualizer which shows all the FIM benchmark for all Tiers of FIM database that looks like:
+<p align="center">
+  <a href="https://fimbench.streamlit.app/">
+    <img src="images/FIM_vizualizerpage.png" alt="FIM Visualizer UI" width="600">
+  </a>
+  <br>
+  <em>Fig. 2. FIMbench Visualizer Interface.</em>
+</p>
 
-<a href="https://fimbench.streamlit.app/">
-  <img src="images/FIM_vizualizerpage.png" alt="FIM Visualizer UI" width="900">
-</a>
-Each FIM location is shows in the map, zoom into gives the more detailed location. If user clicks the location, it will pops up the metadata of this benchmark and Users can directly download the FIM  in raster (.tif) format and meta data as well as all for FIM evaluation, AOI and other required information. User can directly download from the pops up or seamlessly using the framework.
+Each FIM location is displayed on the map, and zooming in reveals finer spatial detail. When a user clicks on a location, a pop-up window appears containing the full metadata for that benchmark. From this panel, users can directly download the flood inundation raster (.tif), metadata files, AOI layers, and other resources required for FIM evaluation. Downloads can be initiated either through the pop-up itself or seamlessly through the framework.
+Below is an example of the information displayed when a user selects a FIM location, including flood details, FIM tier, spatial resolution, and additional metadata:
 
-Here is how it looks when user clicks each FIM location: it will show data of flood, FIM tier, resolution and all other information.
 <a href="https://fimbench.streamlit.app/">
   <img src="images/Metadata_Viz.png" alt="FIM Visualizer UI" width="900">
 </a>
