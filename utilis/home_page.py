@@ -110,63 +110,110 @@ def apply_page_style() -> None:
     )
 
 # Header section--> includes title, caption, and two-column hero
-def render_hero_section() -> None:
+#def render_hero_section() -> None:
     # Header
-    st.title("FIM Benchmark Viewer")
-    st.caption(
-        "Browse, inspect and seamless integrate benchmark Flood Inundation Maps (FIMs) "
-        "into your workflow to evaluate flood map predictions."
+   # st.title("Flood Inundation Mapping Benchmark (FIMBench) Repository")
+    #st.markdown(
+   # """
+    #This repository contains benchmark Flood Inundation Maps (FIM)s from
+   # multiple sources including remote sensing and high-fidelity model predicted maps.
+    #The FIM inventory is classified into four quality-based tiers (Fig. 1) and a High Water Mark (HWM) maps.
+    #The database is stored in an AWS S3 bucket with an open API.
+
+   # **Each folder in the S3 Bucket includes:**
+
+   # a. A flood inundation raster (GeoTIFF; .tiff)  
+   # b. A vector layer illustrating the bounding box of the flood domain (Geopackage; .gpkg)  
+    #c. Metadata file (JSON; .json)
+
+   # """
+#)
+def render_hero_section() -> None:
+
+    # ---------- HERO BANNER ----------
+    st.markdown(
+        """
+        <style>
+            .hero-container {
+                position: relative;
+                width: 100%;
+                height: 260px;
+                overflow: hidden;
+                border-radius: 12px;
+                margin-bottom: 1.5rem;
+            }
+
+            .hero-bg {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                filter: brightness(65%);
+            }
+
+            .hero-title {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                color: white;
+                font-size: 32px;
+                font-weight: 700;
+                text-align: center;
+                text-shadow: 0px 2px 6px rgba(0,0,0,0.55);
+                width: 90%;
+            }
+        </style>
+
+        <div class="hero-container">
+            <img class="hero-bg" src="images/banner.png">
+            <div class="hero-title">
+                Flood Inundation Mapping Benchmark (FIMBench) Repository
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
-    st.markdown('<hr class="title-rule">', unsafe_allow_html=True)
 
-    # Two-column hero
-    left, right = st.columns([1.6, 1.0], vertical_alignment="top")
+    # ---------- DESCRIPTION SECTION ----------
+    st.markdown(
+        """
+        This repository hosts **benchmark Flood Inundation Maps (FIMs)** sourced from **remote sensing imagery**, **aerial observations**, 
+        and **high-fidelity hydrodynamic model predictions**.The complete FIM inventory is categorized into **four quality-based tiers** (Fig. 1),along with an 
+        additional class of **High Water Mark (HWM)**–derived maps.All benchmark datasets are stored in an **AWS S3 bucket**, accessible through an **open API** 
+        for seamless integration into workflows.
 
-    with left:
-        st.markdown(
-            """
-            <div class="panel">
-              <h3 style="margin-top:0;margin-bottom:0.25rem;">
-                Flood Inundation Mapping Predictions Evaluation Framework (FIMeval)
-              </h3>
-              <div class="muted" style="margin-top:0.25rem;">
-                Powerful tools to visualize, benchmark, and evaluate flood inundation maps (FIMs)
-                for hydrologic modeling, preparedness, and response.
-              </div>
-              <div style="margin-top:0.6rem;">
-                <span class="pill">CSI</span>
-                <span class="pill">POD</span>
-                <span class="pill">FAR</span>
-                <span class="pill">F1</span>
-                <span class="pill">Accuracy</span>
-                <span class="pill">Buildings overlay</span>
-                <span class="pill">AOI & waterbody masking</span>
-                <span class="pill">Seamless Benchmark FIM Integration</span>
-              </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        ### **Each folder in the S3 bucket contains:**
+        - **Flood inundation raster** (GeoTIFF: `.tif`)  
+        - **Bounding box vector layer** for the flood domain (GeoPackage: `.gpkg`)  
+        - **Metadata file** describing acquisition and dataset details (JSON: `.json`)
+        """
+    )
 
-    with right:
-        st.markdown(
-            """
-            <div class="panel">
-              <b>What FIMeval does</b>
-              <ul style="margin-top: 0.5rem;">
-                <li>Compares predicted FIMs to benchmark datasets</li>
-                <li>Computes evaluation metrics automatically</li>
-                <li>Integrates building footprint impacts (optional)</li>
-                <li>Supports AOI boundaries + permanent waterbody masks</li>
-                <li>Connects to SDML’s benchmark FIM repository seamlessly</li>
-              </ul>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+ # Inject CSS to perfectly center ALL st.image elements
+    st.markdown(
+    """
+    <style>
+    .stImage > img {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
+# Display image normally — Streamlit will center it automatically now
+    st.image("images/Flowchart.png", width=900)
 
-# About section
+# Center caption
+    st.markdown(
+    "<p style='text-align: center; font-size: 14px; color: grey;'><b>Fig. 1: Structure of FIMbench</b></p>",
+    unsafe_allow_html=True
+)
+ #   st.markdown('<hr class="title-rule">', unsafe_allow_html=True)
+
+# About FIMbench Data Sources
 def render_about_section() -> None:
     """Middle 'About' section."""
     st.write("")
@@ -176,13 +223,173 @@ def render_about_section() -> None:
     )
     st.write("")
 
-    st.subheader("About the FIM Predictions Evaluation Framework")
+    st.subheader("FIMbench Data Sources and Content")
     st.markdown(
         """
-Evaluating flood maps is essential—but doing it by hand is tedious and error-prone.  
-**FIMeval** streamlines the workflow so you can focus on insights, not mechanics.
+The benchmark FIM rasters are available for four tiers and one seperate class for High Water Marks generated FIM.  
+**Tier 1:** This category includes FIMs derived from very high resolution NOAA Emergency Response Imegery.
+ 1. Flood rasters are generated by classifying raw images into two classes: **flood pixels (1)** and **non-flooded pixels (0)**, using a combination of automated and hand-labelled processing (https://storms.ngs.noaa.gov).
+ 2. **Spatial Resolution :** 20-50 cm.
+ 3. **Nodata Value:** -9999
+
+**Tier 2:** This tier consists of FIM generated from PlanetScope Scenes integrated with a hydrologically guided algorithm.
+ 1. The flood rasters contains three class: **non-flooded pixels(0)**, **flooded pixels from remote sensing sensor (1)**, **flooded pixels from gap-filled algorithm (2)**.
+ 2. **Spatial Resolution :** 3-5 m.
+ 3. **Nodata Value:** -9999
+
+**Tier 3:** : This category of FIMs contains flood rasters derived from Sentinel-1A integrated with the hydrologically guided gap-filled algorithm.
+ 1. Similar to Tier 2, the flood rasters contains the same three classes: **non-flooded pixels(0)**, **flooded pixels from remote sensing sensor (1)**, **flooded pixels from gap-filled algorithm (2)**.
+ 2. **Spatial Resolution :** 10 m.
+ 3. **Nodata Value:** -9999
+
+**Tier 4:**: This tier contains FEMA’s Base Level Engineering (BLE) flood maps representing synthetic flood events.
+ 1. Includes HEC RAS derived FIM of 100-year and 500-year floods containing two classes: **flooded pixels (1)** and **non-flooded pixels(0)**.
+ 2. **Spatial Resolution:** 10 m.
+ 3. **Nodata Value:** -9999
+
+**High Water Marks-FIM**: This category of FIM contains the flood maps derived from surveyed USGS high water marks.
+ 1. Contains two classes:  **flooded pixels (1)** and **non-flooded pixels(0)**.
+ 2. **Spatial Resolution:** 10 m.
+ 3. **Nodata Value:** -9999
 """
     )
+    st.markdown('<hr class="title-rule">', unsafe_allow_html=True)
+
+
+# ---- Custom CSS for pretty scrollable panels ----
+    st.markdown(
+    """
+    <style>
+    .scroll-panel {
+        height: 260px;
+        padding: 1rem 1.1rem;
+        border-radius: 14px;
+        background: #ffffff;
+        border: 1px solid rgba(180, 200, 220, 0.6);
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+        overflow-y: auto;
+        font-size: 0.92rem;
+        line-height: 1.45;
+    }
+
+    .scroll-panel-title {
+        font-weight: 600;
+        font-size: 1.05rem;
+        margin-bottom: 0.6rem;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        color: #0f172a;
+    }
+
+    .scroll-panel-title span.icon {
+        font-size: 1.1rem;
+    }
+
+    .scroll-panel ul {
+        padding-left: 1.1rem;
+        margin: 0;
+    }
+
+    .scroll-panel li {
+        margin-bottom: 0.35rem;
+    }
+
+    /* Pretty scrollbar (WebKit browsers) */
+    .scroll-panel::-webkit-scrollbar {
+        width: 6px;
+    }
+    .scroll-panel::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .scroll-panel::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.9);
+        border-radius: 999px;
+    }
+    .scroll-panel::-webkit-scrollbar-thumb:hover {
+        background: rgba(100, 116, 139, 1);
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# ---- Two equal columns ----
+    col1, col2 = st.columns(2)
+
+    with col1:  
+      st.markdown(
+        """
+        <div class="scroll-panel">
+            <div class="scroll-panel-title">
+                <span class="icon">🗂️</span>
+                <span> FIMbench Folder Structure </span>
+            </div>
+            <ul>
+                <li>The folder structure in the database S3 Bucket is organized by quality levels labelled as Tier 1, Tier 2, Tier 3, Tier 4 and HWM-FIM (Fig. 2).</li>
+                <li>Under each Level folder, there are subfolders consisting of flood maps for different case studies.</li>
+                <li>The naming convention of these subfolders is based on the date of the flood event, followed by the coordinates of the centroid of the flood map (e.g. 20161009T150712_0775815W352133N).</li>
+            </ul>
+            
+        </div>
+        """,
+        unsafe_allow_html=True,
+   
+    )  
+      
+      
+    with col2:
+        st.markdown(
+        """
+        <div class="scroll-panel">
+            <div class="scroll-panel-title">
+                <span class="icon">📊</span>
+                <span> File Naming Convention </span>
+            </div>
+            <ul>
+                The benchmark raster filenames encode key metadata, including location, data type, resolution, and the date and time of the flood event. The following naming convention is used:
+                <li> <b>SS : Sensor Name<b>
+                <ul>
+                    <li>S1 – Sentinel-1</li>
+                    <li>AI – Aerial Imagery</li>
+                    <li>BLE – Base Level Engineering</li>
+                </ul>
+                <li> <b>SR<b>: Spatial resolution of the imagery
+                <ul>
+                    <li> 10m for 10 meters
+                    <li> 0_5m for 50 centimeters.</li>
+                </ul>
+                <li> YYYYMMDD : Acquisition date 
+                <ul>
+                    <li> Year, month, and day of the flood event
+                </ul>
+                <li> TT: Time of Acquisition in UTC.
+                <li> UU: Unique Identifier of the Location.
+                <ul>
+                    <li> Latitude and longitude (formatted as W/E + N/S) of the centroid for actual flood events.
+                    <li> HUC-8 ID for BLE flood maps
+                </ul>
+                <li> BM: Indicates Benchmark.
+                <li> Example : S1A_10m_20190527T00265_ 953144W310436N_BM.tif 
+
+                
+
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+## Display image normally — Streamlit will center it automatically now
+    #st.image("images/Folder.png", width=450)
+
+# Center caption
+    #st.markdown(
+   # "<p style='text-align: center; font-size: 14px; color: grey;'><b>Fig. 2: Folder</b></p>",
+   # unsafe_allow_html=True
+#)
+ #   st.markdown('<hr class="title-rule">', unsafe_allow_html=True)
+
+
 
 #Explore row (Map + Docs) section
 def render_explore_row() -> None:

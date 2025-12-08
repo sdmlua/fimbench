@@ -15,7 +15,7 @@ from utilis.home_page import (
 
 # Page and Global Styles
 st.set_page_config(
-    page_title="FIM Benchmark Viewer",
+    page_title="FIMBench Viewer",
     page_icon="💧",
     layout="wide",
 )

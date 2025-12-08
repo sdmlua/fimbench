@@ -177,7 +177,7 @@ class VectorGridProtobuf(MacroElement):
         
 # Streamlit page boot
 st.set_page_config(page_title="Interactive FIM Vizualizer", page_icon="🌊", layout="wide")
-st.title("Benchmark FIMs DASHBOARD")
+st.title("FIMbench Dashboard")
 
 # Session defaults
 ss = st.session_state

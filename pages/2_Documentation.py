@@ -25,9 +25,9 @@ access it programmatically- using Python or via the command line. So that user c
 and **USE** benchmark data for their own analysis. These benchmark datasets are stored on **Surface Dynamics Modeling Lab (SDML) S3 bucket**.
 
 This dataset can be repurposed in multiple ways:
-- accessing **ONLY BENCHMARK DATA**, 
-- accessing seamlessly for [**FIM EVALUATION FRAMEWORK**](https://github.com/sdmlua/fimeval), and
-- accessing for [**FIMSERV**](https://github.com/sdmlua/FIMserv).
+- Accessing **ONLY BENCHMARK DATA**, 
+- Accessing seamlessly for [**FIM EVALUATION FRAMEWORK**](https://github.com/sdmlua/fimeval), and
+- Accessing for [**FIMSERV**](https://github.com/sdmlua/FIMserv).
 """
 )
 
@@ -426,7 +426,7 @@ Use the **`benchFIMquery()`** function from `fimeval`.
     )
     st.code(python_onlybenchmark, language="python")
 
-with st.expander("**2. accessing seamlessly for FIM EVALUATION FRAMEWORK**"):
+with st.expander("**2. Accessing seamlessly for FIM EVALUATION FRAMEWORK**"):
     st.markdown(
         """
 This dataset can be used directly with the [**FIM Evaluation Framework**](https://github.com/sdmlua/fimeval) to  
@@ -438,7 +438,7 @@ In this step to proceed, The user decide all the benchmark FIMs for all the case
     )
     st.code(python_fimevalwithbench, language="python")
 
-with st.expander("**3. accessing for FIMSERV**"):
+with st.expander("**3. Accessing for FIMSERV**"):
     st.markdown(
         """
 The [**FIM as a Service (FIMSERV)**](https://github.com/sdmlua/FIMserv) platform allows users to generate FIM using NOAA Office of Water Prediction FIM framework based on Height Above Nearest Drainage (HAND) approach. 
