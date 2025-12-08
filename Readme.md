@@ -22,12 +22,18 @@ A preview of the interface is shown below:
   <em>Fig. 2. FIMbench Visualizer Interface.</em>
 </p>
 
+### **Downloading Data from FIMbench Visualizer**
+
 Each FIM location is displayed on the map, and zooming in reveals finer spatial detail. When a user clicks on a location, a pop-up window appears containing the full metadata for that benchmark. From this panel, users can directly download the flood inundation raster (.tif), metadata files, AOI layers, and other resources required for FIM evaluation. Downloads can be initiated either through the pop-up itself or seamlessly through the framework.
 Below is an example of the information displayed when a user selects a FIM location, including flood details, FIM tier, spatial resolution, and additional metadata:
 
-<a href="https://fimbench.streamlit.app/">
-  <img src="images/Metadata_Viz.png" alt="FIM Visualizer UI" width="900">
-</a>
+<p align="center">
+  <a href="https://fimbench.streamlit.app/">
+    <img src="images/Metadata_Viz.png" alt="FIM Visualizer UI" width="600">
+  </a>
+  <br>
+  <em>Fig. 3. Downloading FIM from the FIMbench Visualizer Interface.</em>
+</p>
 
 On the left pane user can filter based on tier, date, and even activate the FIM extent. Note that the FIM extent is simplified just for rendering purpose, it doenot necessarily reflect the actual accurate delineation, So download tif raster to get actual resolution. 
 
