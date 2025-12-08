@@ -35,16 +35,19 @@ Below is an example of the information displayed when a user selects a FIM locat
   <em>Fig. 3. Downloading FIM from the FIMbench Visualizer Interface.</em>
 </p>
 
-On the left pane user can filter based on tier, date, and even activate the FIM extent. Note that the FIM extent is simplified just for rendering purpose, it doenot necessarily reflect the actual accurate delineation, So download tif raster to get actual resolution. 
+### **Benchmark Flood Raster Visualization**
+The left panel allows users to filter FIM locations by tier, date, and other attributes, and also provides an option to display the FIM extent. Please note that the rendered FIM extent is a simplified representation for visualization purposes and may not reflect the precise flood boundary. For the full-resolution and accurate delineation, users should download the TIFF raster.
+Below is an example of the interface when the FIM extent layer is activated:
 
-Here is how it shows up when FIM extent is activated.
-<a href="https://fimbench.streamlit.app/">
-  <img src="images/FIM_vizualization.png" alt="FIM Visualizer UI" width="900">
-</a>
+<p align="center">
+  <a href="https://fimbench.streamlit.app/">
+    <img src="images/FIM_vizualization.png" alt="FIM Visualizer UI" width="600">
+  </a>
+  <br>
+  <em>Fig. 4. Visualizing Benchmark Flood Rasters.</em>
+</p>
 
-This is still on development phase and live at This app is live at: https://fimbench.streamlit.app/
-
-The final version will be released soon. 
+This interactive platform is live at: https://fimbench.streamlit.app/
 
 **For more information**
 
