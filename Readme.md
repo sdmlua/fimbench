@@ -3,7 +3,7 @@
 This repository provides a curated collection of benchmark **Flood Inundation Maps (FIMs)** derived from multiple high-quality sources, including remote sensing imagery, aerial observations, and high-fidelity hydrodynamic model outputs. The complete FIM inventory is organized into **four quality-based tiers** (Fig. 1), along with an additional category containing **High Water Mark (HWM)–derived flood maps**. All benchmark datasets are hosted in an **AWS S3 bucket** and can be accessed through an **open API**, enabling seamless integration into research pipelines, visualization tools, and operational workflows.
 
 <p align="center">
-  <img src="images/FIM_vizualizerpage.png" alt="FIM Visualizer UI" width="600"><br>
+  <img src="images/Flowchart.png" alt="FIM Visualizer UI" width="600"><br>
   <em>Fig. 1. Structure of FIMbench.</em>
 </p>
 
