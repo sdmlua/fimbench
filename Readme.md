@@ -8,6 +8,16 @@ This repository provides a curated collection of benchmark **Flood Inundation Ma
 </p>
 
 ---
+### **Home Interface**
+Here, the background about the benchmark data, how it is acquired and structured into the database is well explained. 
+
+<p align="center">
+  <a href="https://fimbench.streamlit.app/">
+    <img src="images/home_page.png" alt="FIM Visualizer UI" width="600">
+  </a>
+  <br>
+  <em>Fig. 2. FIMbench Visualizer Interface.</em>
+</p>
 
 ### **FIM Visualizer Interface**
 
@@ -49,6 +59,6 @@ Below is an example of the interface when the FIM extent layer is activated:
 
 This interactive platform is live at: https://fimbench.streamlit.app/
 
-**For more information**
+### **For more information**
 
 Email: sdhital@crimson.ua.edu

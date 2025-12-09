@@ -12,7 +12,7 @@ from utilis.home_page import apply_page_style
 st.set_page_config(layout="wide")
 
 # Global font styling
-inject_globalfont(font_size_px=18, sidebar_font_size_px=20)
+inject_globalfont(font_size_px=18, sidebar_font_size_px=22)
 apply_page_style()
 
 #Page title and intro

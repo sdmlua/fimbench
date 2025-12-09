@@ -1,217 +1,185 @@
 """
-This module contains functions to render the Home page of the FIM Benchmark Viewer app.
+This module contains functions to render the Home page and shared UI elements
+like the sticky header.
 """
 import base64
 from pathlib import Path
 import streamlit as st
 
-#Styles for Home Page
-def apply_page_style() -> None:
-    """Inject all CSS for the Home page."""
+# Font Awesome
+st.markdown(
+    """
+    <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    """,
+    unsafe_allow_html=True,
+)
+
+# Utility Functions
+def image_to_base64_raw(image_path: str) -> str:
+    """Return base64 of file bytes (no re-encode -> no quality change)."""
+    data = Path(image_path).read_bytes()
+    return base64.b64encode(data).decode("utf-8")
+
+def guess_mime_from_suffix(image_path: str) -> str:
+    ext = Path(image_path).suffix.lower()
+    return {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".webp": "image/webp",
+        ".gif": "image/gif",
+        ".svg": "image/svg+xml",
+    }.get(ext, "application/octet-stream")
+
+def render_img_html(image_path: str, alt: str = "", max_width: str = "100%"):
+    """Helper to render standard inline images."""
+    b64 = image_to_base64_raw(image_path)
+    mime = guess_mime_from_suffix(image_path)
     st.markdown(
-        """
-        <style>
-          /* --- Page background: blue → white → blue, fixed, light --- */
-          .stApp {
-            background:
-              /* soft blue glow top-left */
-              radial-gradient(
-                1200px 600px at 10% 0%,
-                rgba(44,127,184,0.14) 0%,
-                rgba(44,127,184,0.04) 55%,
-                transparent 75%
-              ),
-              /* soft blue glow bottom-right */
-              radial-gradient(
-                1200px 600px at 90% 100%,
-                rgba(44,127,184,0.16) 0%,
-                rgba(44,127,184,0.05) 55%,
-                transparent 75%
-              ),
-              /* main vertical gradient: blue → white → blue */
-              linear-gradient(
-                180deg,
-                #e9f4fb 0%,
-                #ffffff 45%,
-                #e9f4fb 100%
-              );
-            background-attachment: fixed, fixed, fixed;
-          }
-
-          /* compact page padding */
-          .block-container { padding-top: 1.4rem; padding-bottom: 2rem; }
-
-          /* title divider: blue→blue (kept as-is; you can tweak if you want) */
-          .title-rule {
-            height: 4px; border: none;
-            background: linear-gradient(90deg, #2c7fb8 0%, #2c7fb8 100%);
-            border-radius: 3px;
-            margin: 0.35rem 0 1.0rem;
-          }
-
-          /* shared panel look for both columns */
-          .panel {
-            border-radius: 14px;
-            border: 1px solid rgba(0,0,0,0.08);
-            background: rgba(255,255,255,1);
-            padding: 1.0rem 1.1rem;
-            box-shadow:
-              0 6px 14px rgba(44,127,184,0.08),
-              0 2px 6px rgba(44,127,184,0.06);
-          }
-
-          .muted { color: #555; }
-
-          .pill {
-            display: inline-block;
-            padding: 0.15rem 0.55rem;
-            border-radius: 999px;
-            border: 1px solid rgba(0,0,0,0.08);
-            font-size: 0.9rem;
-            background: #fff;
-            margin-right: 0.35rem;
-            margin-bottom: 0.35rem;
-          }
-
-          /* buttons */
-          .stButton > button {
-            border-radius: 12px;
-            padding: 0.6rem 1.0rem;
-            font-weight: 600;
-            border: 1px solid rgba(44,127,184,0.25);
-            background: linear-gradient(
-              90deg,
-              rgba(44,127,184,0.12),
-              rgba(44,127,184,0.12)
-            );
-          }
-          .stButton > button:hover {
-            background: linear-gradient(
-              90deg,
-              rgba(44,127,184,0.18),
-              rgba(44,127,184,0.18)
-            );
-            border-color: rgba(44,127,184,0.35);
-          }
-
-          /* Turn any st.container that contains .panel-scope into a rounded card */
-          div[data-testid="stVerticalBlock"]:has(> .panel-scope) {
-            border-radius: 14px;
-            border: 1px solid rgba(0,0,0,0.08);
-            background: rgba(255,255,255,0.96);
-            padding: 1.0rem 1.1rem !important;
-            box-shadow:
-              0 6px 14px rgba(44,127,184,0.08),
-              0 2px 6px rgba(44,127,184,0.06);
-          }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-# Header section--> includes title, caption, and two-column hero
-#def render_hero_section() -> None:
-    # Header
-   # st.title("Flood Inundation Mapping Benchmark (FIMBench) Repository")
-    #st.markdown(
-   # """
-    #This repository contains benchmark Flood Inundation Maps (FIM)s from
-   # multiple sources including remote sensing and high-fidelity model predicted maps.
-    #The FIM inventory is classified into four quality-based tiers (Fig. 1) and a High Water Mark (HWM) maps.
-    #The database is stored in an AWS S3 bucket with an open API.
-
-   # **Each folder in the S3 Bucket includes:**
-
-   # a. A flood inundation raster (GeoTIFF; .tiff)  
-   # b. A vector layer illustrating the bounding box of the flood domain (Geopackage; .gpkg)  
-    #c. Metadata file (JSON; .json)
-
-   # """
-#)
-def render_hero_section() -> None:
-
-    # ---------- HERO BANNER ----------
-    st.markdown(
-        """
-        <style>
-            .hero-container {
-                position: relative;
-                width: 100%;
-                height: 260px;
-                overflow: hidden;
-                border-radius: 12px;
-                margin-bottom: 1.5rem;
-            }
-
-            .hero-bg {
-                width: 100%;
-                height: 100%;
-                object-fit: cover;
-                filter: brightness(65%);
-            }
-
-            .hero-title {
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                color: white;
-                font-size: 32px;
-                font-weight: 700;
-                text-align: center;
-                text-shadow: 0px 2px 6px rgba(0,0,0,0.55);
-                width: 90%;
-            }
-        </style>
-
-        <div class="hero-container">
-            <img class="hero-bg" src="images/banner.png">
-            <div class="hero-title">
-                Flood Inundation Mapping Benchmark (FIMBench) Repository
-            </div>
+        f"""
+        <div style="line-height:0; overflow:visible; margin:0; padding:0;">
+            <img src="data:{mime};base64,{b64}" alt="{alt}"
+            style="width:{max_width}; height:auto; display:block; max-width:none; image-rendering:auto;" />
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # ---------- DESCRIPTION SECTION ----------
+# Sticky Header Function: height from aspect ratio + sidebar width
+def render_sticky_header(image_path: str = "./images/banner.jpg", height_px: int = 120):
+    try:
+        b64 = image_to_base64_raw(image_path)
+        mime = guess_mime_from_suffix(image_path)
+    except FileNotFoundError:
+        st.error(f"Banner image not found at: {image_path}")
+        return
+
+    st.markdown(
+    f"""
+    <style>
+        /* Sticky banner */
+        .sticky-header-container {{
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: var(--banner-height);
+            z-index: 99999;
+            background-color: white;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }}
+        .sticky-header-img {{
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            display: block;
+        }}
+
+        /* NEW 2025+ way: push content down without huge gap */
+        [data-testid="stAppViewContainer"] > .main > .block-container {{
+            padding-top: calc(var(--banner-height) + 1rem) !important;  /* reduced offset */
+        }}
+
+        /* Alternative (even cleaner) – use Streamlit's own top padding */
+        .main > div[data-testid="stVerticalBlock"]:first-child {{
+            padding-top: calc(var(--banner-height) + 1rem) !important;
+        }}
+
+        /* Hide default header */
+        header[data-testid="stHeader"] {{
+            background-color: transparent !important;
+            z-index: 100000;
+        }}
+
+        :root {{
+            --banner-height: clamp(80px, 12vh, 160px);
+        }}
+    </style>
+    <div class="sticky-header-container">
+        <img class="sticky-header-img"
+            src="data:{mime};base64,{b64}"
+            alt="Sticky Banner">
+    </div>
+    """,
+    unsafe_allow_html=True,
+    )
+
+# Standard Page Styles
+def apply_page_style() -> None:
+    """Inject all CSS for the Home page (Backgrounds, Panels, etc.)."""
+    st.markdown(
+        """
+        <style>
+        /* --- Page background --- */
+        .stApp {
+            background:
+                radial-gradient(1200px 600px at 10% 0%, rgba(44,127,184,0.14) 0%, rgba(44,127,184,0.04) 55%, transparent 75%),
+                radial-gradient(1200px 600px at 90% 100%, rgba(44,127,184,0.16) 0%, rgba(44,127,184,0.05) 55%, transparent 75%),
+                linear-gradient(180deg, #e9f4fb 0%, #ffffff 45%, #e9f4fb 100%);
+            background-attachment: fixed, fixed, fixed;
+        }
+        
+        /* Shared Panel Styling */
+        .title-rule {
+            height: 4px; border: none;
+            background: linear-gradient(90deg, #2c7fb8 0%, #2c7fb8 100%);
+            border-radius: 3px;
+            margin: 0.35rem 0 1.0rem;
+        }
+        .panel {
+            border-radius: 14px;
+            border: 1px solid rgba(0,0,0,0.08);
+            background: rgba(255,255,255,1);
+            padding: 1.0rem 1.1rem;
+            box-shadow: 0 6px 14px rgba(44,127,184,0.08), 0 2px 6px rgba(44,127,184,0.06);
+        }
+        /* Scoped Panel */
+        div[data-testid="stVerticalBlock"]:has(> .panel-scope) {
+            border-radius: 14px;
+            border: 1px solid rgba(0,0,0,0.08);
+            background: rgba(255,255,255,0.96);
+            padding: 1.0rem 1.1rem !important;
+            box-shadow: 0 6px 14px rgba(44,127,184,0.08), 0 2px 6px rgba(44,127,184,0.06);
+        }
+        /* Buttons */
+        .stButton > button {
+            border-radius: 12px;
+            border: 1px solid rgba(44,127,184,0.25);
+            background: linear-gradient(90deg, rgba(44,127,184,0.12), rgba(44,127,184,0.12));
+        }
+        .stButton > button:hover {
+            background: linear-gradient(90deg, rgba(44,127,184,0.18), rgba(44,127,184,0.18));
+            border-color: rgba(44,127,184,0.35);
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+# Content Sections
+def render_hero_section():
+    st.markdown("## Flood Inundation Mapping Benchmark (FIMBench) Repository")
     st.markdown(
         """
         This repository hosts **benchmark Flood Inundation Maps (FIMs)** sourced from **remote sensing imagery**, **aerial observations**, 
-        and **high-fidelity hydrodynamic model predictions**.The complete FIM inventory is categorized into **four quality-based tiers** (Fig. 1),along with an 
-        additional class of **High Water Mark (HWM)**–derived maps.All benchmark datasets are stored in an **AWS S3 bucket**, accessible through an **open API** 
-        for seamless integration into workflows.
-
+        and **high-fidelity hydrodynamic model predictions**. The complete FIM inventory is categorized into **four quality-based tiers** (Fig. 1), along with an 
+        additional class of **High Water Mark (HWM)**–derived maps. All benchmark datasets are stored in an **AWS S3 bucket**, accessible through an **open API** for seamless integration into workflows.
+        
         ### **Each folder in the S3 bucket contains:**
-        - **Flood inundation raster** (GeoTIFF: `.tif`)  
-        - **Bounding box vector layer** for the flood domain (GeoPackage: `.gpkg`)  
+        - **Flood inundation raster** (GeoTIFF: `.tif`) 
+        - **Bounding box vector layer** for the flood domain (GeoPackage: `.gpkg`) 
         - **Metadata file** describing acquisition and dataset details (JSON: `.json`)
         """
     )
-
- # Inject CSS to perfectly center ALL st.image elements
+    # Flowchart Image
+    render_img_html("images/Flowchart.png", alt="FIMbench flowchart", max_width="900px")
     st.markdown(
-    """
-    <style>
-    .stImage > img {
-        display: block;
-        margin-left: auto;
-        margin-right: auto;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-# Display image normally — Streamlit will center it automatically now
-    st.image("images/Flowchart.png", width=900)
-
-# Center caption
-    st.markdown(
-    "<p style='text-align: center; font-size: 14px; color: grey;'><b>Fig. 1: Structure of FIMbench</b></p>",
-    unsafe_allow_html=True
-)
- #   st.markdown('<hr class="title-rule">', unsafe_allow_html=True)
+        "<p style='text-align: center; font-size: 14px; color: grey;'><b>Fig. 1: Structure of FIMbench</b></p>",
+        unsafe_allow_html=True
+    )
 
 # About FIMbench Data Sources
 def render_about_section() -> None:
@@ -226,37 +194,49 @@ def render_about_section() -> None:
     st.subheader("FIMbench Data Sources and Content")
     st.markdown(
         """
-The benchmark FIM rasters are available for four tiers and one seperate class for High Water Marks generated FIM.  
-**Tier 1:** This category includes FIMs derived from very high resolution NOAA Emergency Response Imegery.
- 1. Flood rasters are generated by classifying raw images into two classes: **flood pixels (1)** and **non-flooded pixels (0)**, using a combination of automated and hand-labelled processing (https://storms.ngs.noaa.gov).
- 2. **Spatial Resolution :** 20-50 cm.
- 3. **Nodata Value:** -9999
+    The benchmark FIM rasters are available for four tiers and one separate class for High Water Marks–generated FIM.  
 
-**Tier 2:** This tier consists of FIM generated from PlanetScope Scenes integrated with a hydrologically guided algorithm.
- 1. The flood rasters contains three class: **non-flooded pixels(0)**, **flooded pixels from remote sensing sensor (1)**, **flooded pixels from gap-filled algorithm (2)**.
- 2. **Spatial Resolution :** 3-5 m.
- 3. **Nodata Value:** -9999
+    **Tier 1:** This category includes FIMs derived from very high resolution NOAA Emergency Response Imagery.
+    <ul style="margin-left: 1.5rem; margin-bottom: 0.75rem;">
+    <li>Flood rasters are generated by classifying raw images into two classes: <b>flood pixels (1)</b> and <b>non-flooded pixels (0)</b>, using a combination of automated and hand-labelled processing (<a href="https://storms.ngs.noaa.gov" target="_blank">storms.ngs.noaa.gov</a>).</li>
+    <li><b>Spatial Resolution:</b> 20–50 cm.</li>
+    <li><b>NoData Value:</b> -9999.</li>
+    </ul>
 
-**Tier 3:** : This category of FIMs contains flood rasters derived from Sentinel-1A integrated with the hydrologically guided gap-filled algorithm.
- 1. Similar to Tier 2, the flood rasters contains the same three classes: **non-flooded pixels(0)**, **flooded pixels from remote sensing sensor (1)**, **flooded pixels from gap-filled algorithm (2)**.
- 2. **Spatial Resolution :** 10 m.
- 3. **Nodata Value:** -9999
+    **Tier 2:** This tier consists of FIMs generated from PlanetScope scenes integrated with a hydrologically guided algorithm.
+    <ul style="margin-left: 1.5rem; margin-bottom: 0.75rem;">
+    <li>The flood rasters contain three classes: <b>non-flooded pixels (0)</b>, <b>flooded pixels from remote-sensing sensor (1)</b>, <b>flooded pixels from gap-filled algorithm (2)</b>.</li>
+    <li><b>Spatial Resolution:</b> 3–5 m.</li>
+    <li><b>NoData Value:</b> -9999.</li>
+    </ul>
 
-**Tier 4:**: This tier contains FEMA’s Base Level Engineering (BLE) flood maps representing synthetic flood events.
- 1. Includes HEC RAS derived FIM of 100-year and 500-year floods containing two classes: **flooded pixels (1)** and **non-flooded pixels(0)**.
- 2. **Spatial Resolution:** 10 m.
- 3. **Nodata Value:** -9999
+    **Tier 3:** This category of FIMs contains flood rasters derived from Sentinel-1A integrated with the hydrologically guided gap-filled algorithm.
+    <ul style="margin-left: 1.5rem; margin-bottom: 0.75rem;">
+    <li>Similar to Tier 2, the flood rasters contain the same three classes: <b>non-flooded pixels (0)</b>, <b>flooded pixels from remote-sensing sensor (1)</b>, <b>flooded pixels from gap-filled algorithm (2)</b>.</li>
+    <li><b>Spatial Resolution:</b> 10 m.</li>
+    <li><b>NoData Value:</b> -9999.</li>
+    </ul>
 
-**High Water Marks-FIM**: This category of FIM contains the flood maps derived from surveyed USGS high water marks.
- 1. Contains two classes:  **flooded pixels (1)** and **non-flooded pixels(0)**.
- 2. **Spatial Resolution:** 10 m.
- 3. **Nodata Value:** -9999
-"""
+    **Tier 4:** This tier contains FEMA’s Base Level Engineering (BLE) flood maps representing synthetic flood events.
+    <ul style="margin-left: 1.5rem; margin-bottom: 0.75rem;">
+    <li>Includes HEC-RAS-derived FIMs of 100-year and 500-year floods containing two classes: <b>flooded pixels (1)</b> and <b>non-flooded pixels (0)</b>.</li>
+    <li><b>Spatial Resolution:</b> 10 m.</li>
+    <li><b>NoData Value:</b> -9999.</li>
+    </ul>
+
+    **High Water Marks – FIM:** This category of FIM contains the flood maps derived from surveyed USGS high water marks.
+    <ul style="margin-left: 1.5rem; margin-bottom: 0.75rem;">
+    <li>Contains two classes: <b>flooded pixels (1)</b> and <b>non-flooded pixels (0)</b>.</li>
+    <li><b>Spatial Resolution:</b> 10 m.</li>
+    <li><b>NoData Value:</b> -9999.</li>
+    </ul>
+    """,
+        unsafe_allow_html=True,
     )
+
     st.markdown('<hr class="title-rule">', unsafe_allow_html=True)
 
-
-# ---- Custom CSS for pretty scrollable panels ----
+    # Custom CSS for pretty scrollable panels
     st.markdown(
     """
     <style>
@@ -314,7 +294,7 @@ The benchmark FIM rasters are available for four tiers and one seperate class fo
     unsafe_allow_html=True,
 )
 
-# ---- Two equal columns ----
+    # Two columns for Folder Structure and Naming Convention
     col1, col2 = st.columns(2)
 
     with col1:  
@@ -322,7 +302,7 @@ The benchmark FIM rasters are available for four tiers and one seperate class fo
         """
         <div class="scroll-panel">
             <div class="scroll-panel-title">
-                <span class="icon">🗂️</span>
+                <span class="icon"><i class="fa-solid fa-folder" style="color: #d58400;"></i></span>
                 <span> FIMbench Folder Structure </span>
             </div>
             <ul>
@@ -343,54 +323,40 @@ The benchmark FIM rasters are available for four tiers and one seperate class fo
         """
         <div class="scroll-panel">
             <div class="scroll-panel-title">
-                <span class="icon">📊</span>
+                <span class="icon"><i class="fa-solid fa-book" style="color: #ff8647;"></i></span>
                 <span> File Naming Convention </span>
             </div>
             <ul>
                 The benchmark raster filenames encode key metadata, including location, data type, resolution, and the date and time of the flood event. The following naming convention is used:
-                <li> <b>SS : Sensor Name<b>
+                <li> <b>SS</b>: Sensor Name
                 <ul>
                     <li>S1 – Sentinel-1</li>
                     <li>AI – Aerial Imagery</li>
                     <li>BLE – Base Level Engineering</li>
                 </ul>
-                <li> <b>SR<b>: Spatial resolution of the imagery
+                <li> <b>SR</b>: Spatial resolution of the imagery
                 <ul>
-                    <li> 10m for 10 meters
+                    <li> 10m for 10 meters</li>
                     <li> 0_5m for 50 centimeters.</li>
                 </ul>
-                <li> YYYYMMDD : Acquisition date 
+                <li> <b>YYYYMMDD</b>: Acquisition date 
                 <ul>
-                    <li> Year, month, and day of the flood event
+                    <li>Year, month, and day of the flood event</li>
                 </ul>
-                <li> TT: Time of Acquisition in UTC.
-                <li> UU: Unique Identifier of the Location.
+                <li> <b>TT</b>: Time of acquisition in UTC.</li>
+                <li> <b>UU</b>: Unique Identifier of the location.
                 <ul>
-                    <li> Latitude and longitude (formatted as W/E + N/S) of the centroid for actual flood events.
-                    <li> HUC-8 ID for BLE flood maps
+                    <li>Latitude and longitude (formatted as W/E + N/S) of the centroid for actual flood events.</li>
+                    <li>HUC-8 ID for BLE flood maps</li>
                 </ul>
-                <li> BM: Indicates Benchmark.
-                <li> Example : S1A_10m_20190527T00265_ 953144W310436N_BM.tif 
-
-                
-
+                <li> <b>BM</b>: Indicates Benchmark.</li>
+                <li> <b>Example</b>: S1A_10m_20190527T002655_953144W310436N_BM.tif</li>
+            </ul>
         </div>
         """,
         unsafe_allow_html=True,
     )
-
-## Display image normally — Streamlit will center it automatically now
-    #st.image("images/Folder.png", width=450)
-
-# Center caption
-    #st.markdown(
-   # "<p style='text-align: center; font-size: 14px; color: grey;'><b>Fig. 2: Folder</b></p>",
-   # unsafe_allow_html=True
-#)
- #   st.markdown('<hr class="title-rule">', unsafe_allow_html=True)
-
-
-
+        
 #Explore row (Map + Docs) section
 def render_explore_row() -> None:
     """Row with 'Open Interactive Viewer' and 'Open Documentation' cards."""

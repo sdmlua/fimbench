@@ -17,11 +17,12 @@ from folium.plugins import MarkerCluster
 from branca.element import Element, MacroElement
 from jinja2 import Template
 import json
+from folium.plugins import MarkerCluster, Fullscreen
 
 from utilis.ui import inject_globalfont
 from utilis.home_page import apply_page_style
 
-inject_globalfont(font_size_px=18, sidebar_font_size_px=20)
+inject_globalfont(font_size_px=18, sidebar_font_size_px=22)
 apply_page_style()
 
 # CONFIG
@@ -34,12 +35,12 @@ BASE_FEATURE_CAP = 10
 
 TIER_COLORS = {
     "Tier_1": "#D3143E",
-    "Tier_2": "#f9b581",
+    "Tier_2": "#81f9a7",
     "Tier_3": "#b5b0fd",
     "Tier_4": "#0b5a90",
     "Tier_5": "#87ed13",
 }
-DEFAULT_TIER_COLOR = "#187fc4"
+DEFAULT_TIER_COLOR = "#2687c8"
 
 BASEMAPS = {
     "OpenStreetMap": dict(tiles="OpenStreetMap", attr="© OpenStreetMap"),
@@ -319,9 +320,16 @@ def render_map():
         control_scale=True,
         prefer_canvas=True
     )
+    # Fullscreen control (kept away from LayerControl and your legend)
+    Fullscreen(
+        position="topleft",
+        title="Full screen",
+        title_cancel="Exit full screen",
+        force_separate_button=True
+    ).add_to(m)
+
     bm = BASEMAPS[basemap_choice]
     folium.TileLayer(tiles=bm["tiles"], name=basemap_choice, control=False, attr=bm["attr"], show=True).add_to(m)
-
     # Markers
     def popup_html(r: dict) -> str:
         tif_url  = r.get("tif_url")
