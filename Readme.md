@@ -39,7 +39,7 @@ Below is an example of the information displayed when a user selects a FIM locat
 
 <p align="center">
   <a href="https://fimbench.streamlit.app/">
-    <img src="images/Metadata_Viz.png" alt="FIM Visualizer UI" width="600">
+    <img src="images/Metadata_Viz.png" alt="FIM Visualizer UI">
   </a>
   <br>
   <em>Fig. 3. Downloading FIM from the FIMbench Visualizer Interface.</em>
@@ -51,7 +51,7 @@ Below is an example of the interface when the FIM extent layer is activated:
 
 <p align="center">
   <a href="https://fimbench.streamlit.app/">
-    <img src="images/FIM_vizualization.png" alt="FIM Visualizer UI" width="600">
+    <img src="images/FIM_vizualization.png" alt="FIM Visualizer UI">
   </a>
   <br>
   <em>Fig. 4. Visualizing Benchmark Flood Rasters.</em>
