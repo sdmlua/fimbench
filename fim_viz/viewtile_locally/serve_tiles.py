@@ -6,6 +6,7 @@ import pathlib
 
 ROOT = str(pathlib.Path(__file__).resolve().parents[1])
 
+
 class GzipPbfHandler(SimpleHTTPRequestHandler):
     def translate_path(self, path):
         # Serve from this folder (fim_viz)
@@ -39,12 +40,14 @@ class GzipPbfHandler(SimpleHTTPRequestHandler):
         else:
             super().do_GET()
 
+
 def main():
     os.chdir(ROOT)
     port = 8000
     with ThreadingHTTPServer(("0.0.0.0", port), GzipPbfHandler) as httpd:
         print(f"Serving on http://localhost:{port}")
         httpd.serve_forever()
+
 
 if __name__ == "__main__":
     main()

@@ -2,6 +2,7 @@
 This module contains functions to render the Home page and shared UI elements
 like the sticky header.
 """
+
 import base64
 from pathlib import Path
 import streamlit as st
@@ -15,11 +16,13 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
 # Utility Functions
 def image_to_base64_raw(image_path: str) -> str:
     """Return base64 of file bytes (no re-encode -> no quality change)."""
     data = Path(image_path).read_bytes()
     return base64.b64encode(data).decode("utf-8")
+
 
 def guess_mime_from_suffix(image_path: str) -> str:
     ext = Path(image_path).suffix.lower()
@@ -31,6 +34,7 @@ def guess_mime_from_suffix(image_path: str) -> str:
         ".gif": "image/gif",
         ".svg": "image/svg+xml",
     }.get(ext, "application/octet-stream")
+
 
 def render_img_html(image_path: str, alt: str = "", max_width: str = "100%"):
     """Helper to render standard inline images."""
@@ -46,6 +50,7 @@ def render_img_html(image_path: str, alt: str = "", max_width: str = "100%"):
         unsafe_allow_html=True,
     )
 
+
 # Sticky Header Function: height from aspect ratio + sidebar width
 def render_sticky_header(image_path: str = "./images/banner.jpg", height_px: int = 120):
     try:
@@ -56,7 +61,7 @@ def render_sticky_header(image_path: str = "./images/banner.jpg", height_px: int
         return
 
     st.markdown(
-    f"""
+        f"""
     <style>
         /* Sticky banner */
         .sticky-header-container {{
@@ -104,8 +109,9 @@ def render_sticky_header(image_path: str = "./images/banner.jpg", height_px: int
             alt="Sticky Banner">
     </div>
     """,
-    unsafe_allow_html=True,
+        unsafe_allow_html=True,
     )
+
 
 # Standard Page Styles
 def apply_page_style() -> None:
@@ -159,6 +165,7 @@ def apply_page_style() -> None:
         unsafe_allow_html=True,
     )
 
+
 # Content Sections
 def render_hero_section():
     st.markdown("## Flood Inundation Mapping Benchmark (FIMBench) Repository")
@@ -178,8 +185,9 @@ def render_hero_section():
     render_img_html("images/Flowchart.png", alt="FIMbench flowchart", max_width="900px")
     st.markdown(
         "<p style='text-align: center; font-size: 14px; color: grey;'><b>Fig. 1: Structure of FIMbench</b></p>",
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
+
 
 # About FIMbench Data Sources
 def render_about_section() -> None:
@@ -238,7 +246,7 @@ def render_about_section() -> None:
 
     # Custom CSS for pretty scrollable panels
     st.markdown(
-    """
+        """
     <style>
     .scroll-panel {
         height: 260px;
@@ -291,15 +299,15 @@ def render_about_section() -> None:
     }
     </style>
     """,
-    unsafe_allow_html=True,
-)
+        unsafe_allow_html=True,
+    )
 
     # Two columns for Folder Structure and Naming Convention
     col1, col2 = st.columns(2)
 
-    with col1:  
-      st.markdown(
-        """
+    with col1:
+        st.markdown(
+            """
         <div class="scroll-panel">
             <div class="scroll-panel-title">
                 <span class="icon"><i class="fa-solid fa-folder" style="color: #d58400;"></i></span>
@@ -313,14 +321,12 @@ def render_about_section() -> None:
             
         </div>
         """,
-        unsafe_allow_html=True,
-   
-    )  
-      
-      
+            unsafe_allow_html=True,
+        )
+
     with col2:
         st.markdown(
-        """
+            """
         <div class="scroll-panel">
             <div class="scroll-panel-title">
                 <span class="icon"><i class="fa-solid fa-book" style="color: #ff8647;"></i></span>
@@ -354,10 +360,11 @@ def render_about_section() -> None:
             </ul>
         </div>
         """,
-        unsafe_allow_html=True,
-    )
-        
-#Explore row (Map + Docs) section
+            unsafe_allow_html=True,
+        )
+
+
+# Explore row (Map + Docs) section
 def render_explore_row() -> None:
     """Row with 'Open Interactive Viewer' and 'Open Documentation' cards."""
     st.write("")
@@ -393,12 +400,13 @@ def render_explore_row() -> None:
             )
             if st.button("Open Documentation", key="open_docs"):
                 st.switch_page("pages/2_Documentation.py")
-                
+
 
 def _img_to_base64(path: str) -> str:
     """Read an image file and return a base64 data URL fragment."""
     data = Path(path).read_bytes()
     return base64.b64encode(data).decode("utf-8")
+
 
 def render_footer() -> None:
     """Contribute section + logos footer."""
@@ -437,7 +445,7 @@ More detailed information about installation, documentation, and contribution, s
     )
     st.write("")
 
-    #Logos
+    # Logos
     sdml_b64 = _img_to_base64("images/SDML_logo.png")
     ciroh_b64 = _img_to_base64("images/ciroh_logo.png")
 

@@ -16,8 +16,8 @@ import codecs
 # Config defaults
 DEFAULT_BUCKET = "sdmlab"
 DEFAULT_PREFIX = "FIM_Database/"
-SIMPLIFY_M     = 20.0  # meters
-MAX_STR_LEN    = 2000
+SIMPLIFY_M = 20.0  # meters
+MAX_STR_LEN = 2000
 
 # Common RP values used in design standards for Tier 4
 _KNOWN_RP_VALUES = {2, 5, 10, 25, 50, 100, 200, 500, 1000}
@@ -25,13 +25,14 @@ _KNOWN_RP_VALUES = {2, 5, 10, 25, 50, 100, 200, 500, 1000}
 
 # Regex / helpers for lenient JSON
 _ymd_re = re.compile(r"(?<!\d)(\d{8})(?!\d)")
-_TRAILING_COMMA_RE = re.compile(r',(\s*[}\]])')            # ", }" or ", ]"
-_LINE_COMMENT_RE   = re.compile(r'(^|[,{]\s*)//.*$', re.MULTILINE)
-_BLOCK_COMMENT_RE  = re.compile(r'/\*.*?\*/', re.DOTALL)
-_HUC_LEADING0_RE   = re.compile(r'"(HUC\d{1,2})"\s*:\s*(0\d+)(\s*[,\}\]])')
-_SMART_QUOTES = {u"\u201c": '"', u"\u201d": '"', u"\u2018": "'", u"\u2019": "'"}
+_TRAILING_COMMA_RE = re.compile(r",(\s*[}\]])")  # ", }" or ", ]"
+_LINE_COMMENT_RE = re.compile(r"(^|[,{]\s*)//.*$", re.MULTILINE)
+_BLOCK_COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
+_HUC_LEADING0_RE = re.compile(r'"(HUC\d{1,2})"\s*:\s*(0\d+)(\s*[,\}\]])')
+_SMART_QUOTES = {"\u201c": '"', "\u201d": '"', "\u2018": "'", "\u2019": "'"}
 
-_GPKG_SUFFIX_RE = re.compile(r'_(BM|FIM|MASK)$', re.IGNORECASE)
+_GPKG_SUFFIX_RE = re.compile(r"_(BM|FIM|MASK)$", re.IGNORECASE)
+
 
 def make_gpkg_key(folder: str, file_name: Optional[str]) -> Optional[str]:
     """
@@ -45,18 +46,21 @@ def make_gpkg_key(folder: str, file_name: Optional[str]) -> Optional[str]:
         return None
     base_no_ext, _ = os.path.splitext(file_name)
     if _GPKG_SUFFIX_RE.search(base_no_ext):
-        base_aoi = _GPKG_SUFFIX_RE.sub('_AOI', base_no_ext)
+        base_aoi = _GPKG_SUFFIX_RE.sub("_AOI", base_no_ext)
     else:
         base_aoi = f"{base_no_ext}_AOI"
     return f"{folder}/{base_aoi}.gpkg"
 
+
 def s3_http_url(bucket: str, key: str) -> str:
     return f"https://{bucket}.s3.amazonaws.com/{key}"
 
+
 def _unsmart(s: str) -> str:
-    for k,v in _SMART_QUOTES.items():
+    for k, v in _SMART_QUOTES.items():
         s = s.replace(k, v)
     return s
+
 
 def lenient_json_load(raw: str) -> dict:
     txt = raw.lstrip(codecs.BOM_UTF8.decode("utf-8"))
@@ -65,9 +69,10 @@ def lenient_json_load(raw: str) -> dict:
     txt = _TRAILING_COMMA_RE.sub(r"\1", txt)
     txt = _unsmart(txt)
     txt = _HUC_LEADING0_RE.sub(r'"\1": "\2"\3', txt)
-    txt = re.sub(r'(?<![A-Za-z0-9_])NaN(?![A-Za-z0-9_])', 'null', txt)
-    txt = re.sub(r'(?<![A-Za-z0-9_])-?Infinity(?![A-Za-z0-9_])', 'null', txt)
+    txt = re.sub(r"(?<![A-Za-z0-9_])NaN(?![A-Za-z0-9_])", "null", txt)
+    txt = re.sub(r"(?<![A-Za-z0-9_])-?Infinity(?![A-Za-z0-9_])", "null", txt)
     return json.loads(txt)
+
 
 def load_with_context(raw: str, where: str) -> dict:
     try:
@@ -77,37 +82,49 @@ def load_with_context(raw: str, where: str) -> dict:
             return lenient_json_load(raw)
         except json.JSONDecodeError as e:
             lines = raw.splitlines()
-            i = max(0, e.lineno - 3); j = min(len(lines), e.lineno + 2)
+            i = max(0, e.lineno - 3)
+            j = min(len(lines), e.lineno + 2)
             ctx = "\n".join(f"{k+1:>5}: {lines[k]}" for k in range(i, j))
-            raise ValueError(f"Bad JSON at {where}: {e.msg} (line {e.lineno}, col {e.colno})\n{ctx}") from e
+            raise ValueError(
+                f"Bad JSON at {where}: {e.msg} (line {e.lineno}, col {e.colno})\n{ctx}"
+            ) from e
+
 
 def extract_ymd_iso(text: Any) -> Optional[str]:
-    if text is None: return None
+    if text is None:
+        return None
     s = text if isinstance(text, str) else json.dumps(text, ensure_ascii=False)
     m = _ymd_re.search(s)
-    if not m: return None
+    if not m:
+        return None
     try:
         return dt.datetime.strptime(m.group(1), "%Y%m%d").date().isoformat()
     except Exception:
         return None
 
+
 def extract_return_period(text: Any) -> Optional[int]:
-    if text is None: return None
+    if text is None:
+        return None
     s = text if isinstance(text, str) else json.dumps(text, ensure_ascii=False)
     if _ymd_re.search(s):
         return None
     m = re.search(r"(?<!\d)(\d{2,4})(?!\d)", s)
-    if not m: return None
+    if not m:
+        return None
     try:
         return int(m.group(1))
     except Exception:
         return None
 
+
 def coerce_list(x) -> List[str]:
-    if x is None: return []
+    if x is None:
+        return []
     if isinstance(x, list):
         return [str(v)[:MAX_STR_LEN] for v in x]
     return [str(x)[:MAX_STR_LEN]]
+
 
 def centroid_from_meta(meta: Dict[str, Any]) -> Tuple[float, float]:
     c = meta.get("Location of the centroid of the flood map")
@@ -118,7 +135,12 @@ def centroid_from_meta(meta: Dict[str, Any]) -> Tuple[float, float]:
             pass
     ex = meta.get("Extent") or {}
     try:
-        xmin, ymin, xmax, ymax = ex.get("xmin"), ex.get("ymin"), ex.get("xmax"), ex.get("ymax")
+        xmin, ymin, xmax, ymax = (
+            ex.get("xmin"),
+            ex.get("ymin"),
+            ex.get("xmax"),
+            ex.get("ymax"),
+        )
         if all(v is not None for v in (xmin, ymin, xmax, ymax)):
             lon = (float(xmin) + float(xmax)) / 2.0
             lat = (float(ymin) + float(ymax)) / 2.0
@@ -127,6 +149,7 @@ def centroid_from_meta(meta: Dict[str, Any]) -> Tuple[float, float]:
         pass
     return 0.0, 0.0
 
+
 def safe_get(d: Dict[str, Any], *names: str, maxlen: int = MAX_STR_LEN):
     for n in names:
         if n in d and d[n] is not None:
@@ -134,15 +157,19 @@ def safe_get(d: Dict[str, Any], *names: str, maxlen: int = MAX_STR_LEN):
             return v if not isinstance(v, str) else v[:maxlen]
     return None
 
+
 def norm_tier(name: Optional[str]) -> str:
-    if not name: return "Unknown_Tier"
+    if not name:
+        return "Unknown_Tier"
     s = str(name).strip()
-    m = re.match(r'(?i)\s*tier[_\s-]*(\d)\b', s)
+    m = re.match(r"(?i)\s*tier[_\s-]*(\d)\b", s)
     return f"Tier_{m.group(1)}" if m else s
+
 
 def stable_id(tier: str, site: str, file_or_key: str) -> str:
     base = os.path.splitext(os.path.basename(file_or_key))[0]
     return f"{tier}/{site}/{base}"
+
 
 def simplify_geojson_lonlat(geom_geojson: Dict, tol_m: float) -> Optional[Dict]:
     if geom_geojson is None:
@@ -154,8 +181,12 @@ def simplify_geojson_lonlat(geom_geojson: Dict, tol_m: float) -> Optional[Dict]:
     if geom.is_empty:
         return None
     try:
-        to_3857 = Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True).transform
-        to_4326 = Transformer.from_crs("EPSG:3857", "EPSG:4326", always_xy=True).transform
+        to_3857 = Transformer.from_crs(
+            "EPSG:4326", "EPSG:3857", always_xy=True
+        ).transform
+        to_4326 = Transformer.from_crs(
+            "EPSG:3857", "EPSG:4326", always_xy=True
+        ).transform
         geom_3857 = transform(to_3857, geom)
         simp_3857 = geom_3857.simplify(tol_m, preserve_topology=True)
         simp_4326 = transform(to_4326, simp_3857)
@@ -164,6 +195,7 @@ def simplify_geojson_lonlat(geom_geojson: Dict, tol_m: float) -> Optional[Dict]:
         return mapping(simp_4326)
     except GEOSException:
         return None
+
 
 def list_meta_keys(s3, bucket: str, prefix: str) -> List[str]:
     keys: List[str] = []
@@ -177,14 +209,18 @@ def list_meta_keys(s3, bucket: str, prefix: str) -> List[str]:
 
 
 # NORMALIZATION
-def normalize_record(bucket: str, meta_key: str, meta: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[Dict]]:
-    parts  = meta_key.split("/")
-    tier   = norm_tier(next((p for p in parts if p.lower().startswith("tier")), "Unknown_Tier"))
-    site   = parts[-2] if len(parts) >= 2 else "Unknown_Site"
+def normalize_record(
+    bucket: str, meta_key: str, meta: Dict[str, Any]
+) -> Tuple[Dict[str, Any], Optional[Dict]]:
+    parts = meta_key.split("/")
+    tier = norm_tier(
+        next((p for p in parts if p.lower().startswith("tier")), "Unknown_Tier")
+    )
+    site = parts[-2] if len(parts) >= 2 else "Unknown_Site"
     folder = "/".join(parts[:-1])
 
     file_name = safe_get(meta, "File_Name", "File Name", "File name")
-    tif_url   = s3_http_url(bucket, f"{folder}/{file_name}") if file_name else None
+    tif_url = s3_http_url(bucket, f"{folder}/{file_name}") if file_name else None
 
     # gpkg with _AOI suffix
     gpkg_key = make_gpkg_key(folder, file_name)
@@ -208,7 +244,7 @@ def normalize_record(bucket: str, meta_key: str, meta: Dict[str, Any]) -> Tuple[
     # Tier_4 return period
     return_period: Optional[int] = None
     if tier == "Tier_4":
-        #Prefer explicit metadata keys
+        # Prefer explicit metadata keys
         rp_field = safe_get(
             meta,
             "Synthetic Flooding Event (return period (years))",
@@ -223,7 +259,7 @@ def normalize_record(bucket: str, meta_key: str, meta: Dict[str, Any]) -> Tuple[
         )
         if rp_field is not None:
             return_period = extract_return_period(rp_field)
-            
+
         if return_period is None and file_name:
             tokens = re.split(r"[_\-]", os.path.splitext(file_name)[0])
             for tok in tokens:
@@ -248,7 +284,7 @@ def normalize_record(bucket: str, meta_key: str, meta: Dict[str, Any]) -> Tuple[
 
     # Common fields
     lon, lat = centroid_from_meta(meta)
-    refs     = coerce_list(meta.get("References"))
+    refs = coerce_list(meta.get("References"))
 
     huc: Dict[str, str] = {}
     for k in ("HUC2", "HUC4", "HUC6", "HUC8", "HUC10", "HUC12"):
@@ -260,7 +296,7 @@ def normalize_record(bucket: str, meta_key: str, meta: Dict[str, Any]) -> Tuple[
     # Geometry
     geom = meta.get("FIM_Geometry")
 
-    # BBOX from FIM_Geometry or Extent fallback 
+    # BBOX from FIM_Geometry or Extent fallback
     bbox = None
     if geom:
         try:
@@ -274,7 +310,12 @@ def normalize_record(bucket: str, meta_key: str, meta: Dict[str, Any]) -> Tuple[
     if bbox is None:
         ex = meta.get("Extent") or {}
         try:
-            xmin, ymin, xmax, ymax = ex.get("xmin"), ex.get("ymin"), ex.get("xmax"), ex.get("ymax")
+            xmin, ymin, xmax, ymax = (
+                ex.get("xmin"),
+                ex.get("ymin"),
+                ex.get("xmax"),
+                ex.get("ymax"),
+            )
             if all(v is not None for v in (xmin, ymin, xmax, ymax)):
                 bbox = [float(xmin), float(ymin), float(xmax), float(ymax)]
         except Exception:
@@ -287,62 +328,68 @@ def normalize_record(bucket: str, meta_key: str, meta: Dict[str, Any]) -> Tuple[
         "site_id": site,
         "tier": tier,
         "site": site,
-
         # dates
         "date_ymd": date_ymd,
         "date_of_flood": date_field,
-
         # links / versioning
         "json_url": json_url,
         "s3_prefix": folder,
         "tif_url": tif_url,
         "gpkg_url": gpkg_url,
         "geom_version": 1,
-
         # context (compact)
-        "resolution_m": safe_get(meta, "Resolution in meter", "Resolution (m)", "resolution_m"),
+        "resolution_m": safe_get(
+            meta, "Resolution in meter", "Resolution (m)", "resolution_m"
+        ),
         "state": safe_get(meta, "State"),
         "basin": safe_get(meta, "River Basin Name", "River Basin"),
         "source": safe_get(meta, "Source"),
         "access_rights": safe_get(meta, "Access_Rights"),
         "quality": safe_get(meta, "Quality") or tier,
         **huc,
-
         # centroid for quick fly-to
         "centroid": [lon, lat],
-
         # misc
         "file_name": file_name,
         "references": refs,
         "s3_key": meta_key,
         "return_period": return_period,
-
-        # convenience 
+        # convenience
         "event_ts": event_ts,
-
         # bbox in WGS84
         "bbox": bbox,
     }
 
     return core, geom
 
+
 # MAIN
 def main():
-    ap = argparse.ArgumentParser(description="Build catalog_core.json + FIM_extents.geojson (lean, tile-ready)")
+    ap = argparse.ArgumentParser(
+        description="Build catalog_core.json + FIM_extents.geojson (lean, tile-ready)"
+    )
     ap.add_argument("--bucket", default=DEFAULT_BUCKET)
     ap.add_argument("--prefix", default=DEFAULT_PREFIX)
     ap.add_argument("--simplify-m", type=float, default=SIMPLIFY_M)
-    ap.add_argument("--skip-geometry", action="store_true", help="Do not write FIM_extents.geojson")
+    ap.add_argument(
+        "--skip-geometry", action="store_true", help="Do not write FIM_extents.geojson"
+    )
     ap.add_argument("--profile", default=None, help="AWS profile (optional)")
     ap.add_argument("--out-core", default="catalog_core.json")
     ap.add_argument("--out-geojson", default="FIM_extents.geojson")
     args = ap.parse_args()
 
-    session = boto3.session.Session(profile_name=args.profile) if args.profile else boto3.session.Session()
+    session = (
+        boto3.session.Session(profile_name=args.profile)
+        if args.profile
+        else boto3.session.Session()
+    )
     s3 = session.client("s3")
 
     meta_keys = list_meta_keys(s3, args.bucket, args.prefix)
-    print(f"[list] found {len(meta_keys)} metadata files under s3://{args.bucket}/{args.prefix}")
+    print(
+        f"[list] found {len(meta_keys)} metadata files under s3://{args.bucket}/{args.prefix}"
+    )
 
     core_rows: List[Dict[str, Any]] = []
     ext_rows: List[Dict[str, Any]] = []
@@ -353,7 +400,11 @@ def main():
         if (i % 50 == 0) or (i == len(meta_keys)):
             print(f"[read] {i}/{len(meta_keys)}: {key}")
         try:
-            raw = s3.get_object(Bucket=args.bucket, Key=key)["Body"].read().decode("utf-8", errors="replace")
+            raw = (
+                s3.get_object(Bucket=args.bucket, Key=key)["Body"]
+                .read()
+                .decode("utf-8", errors="replace")
+            )
             meta = load_with_context(raw, f"s3://{args.bucket}/{key}")
 
             core, geom = normalize_record(args.bucket, key, meta)
@@ -362,7 +413,7 @@ def main():
             if rid in seen_ids:
                 seen_ids[rid] += 1
                 core["id"] = f"{rid}__{seen_ids[rid]}"
-                core["feature_id"] = core["id"]  
+                core["feature_id"] = core["id"]
             else:
                 seen_ids[rid] = 1
 
@@ -380,28 +431,30 @@ def main():
                         bbox = None
 
                     # tile-ready lean properties only
-                    ext_rows.append({
-                        "geometry": simp,
-                        "properties": {
-                            "feature_id": core["feature_id"],
-                            "site_id": core["site_id"],
-                            "tier": core["tier"],
-                            "event_date": core.get("date_ymd"),
-                            "event_ts": core.get("event_ts"),           
-                            "metadata_url": core.get("json_url"),        
-                            "s3_prefix": core.get("s3_prefix"),       
-                            "geom_version": core["geom_version"],
-                            "resolution_m": core.get("resolution_m"),
-                            "huc8": core.get("huc8"),
-                            "state": core.get("state"),
-                            "basin": core.get("basin"),
-                            "source": core.get("source"),
-                            "access_rights": core.get("access_rights"),
-                            "centroid": core.get("centroid"),
-                            "bbox": bbox,
-                            "return_period": core.get("return_period"),
+                    ext_rows.append(
+                        {
+                            "geometry": simp,
+                            "properties": {
+                                "feature_id": core["feature_id"],
+                                "site_id": core["site_id"],
+                                "tier": core["tier"],
+                                "event_date": core.get("date_ymd"),
+                                "event_ts": core.get("event_ts"),
+                                "metadata_url": core.get("json_url"),
+                                "s3_prefix": core.get("s3_prefix"),
+                                "geom_version": core["geom_version"],
+                                "resolution_m": core.get("resolution_m"),
+                                "huc8": core.get("huc8"),
+                                "state": core.get("state"),
+                                "basin": core.get("basin"),
+                                "source": core.get("source"),
+                                "access_rights": core.get("access_rights"),
+                                "centroid": core.get("centroid"),
+                                "bbox": bbox,
+                                "return_period": core.get("return_period"),
+                            },
                         }
-                    })
+                    )
         except Exception as e:
             errors.append((key, repr(e)))
 
@@ -426,15 +479,29 @@ def main():
         # keep only clean geometries
         gdf = gdf[gdf.geometry.notnull() & ~gdf.geometry.is_empty]
 
-        # enforce a stable, lean schema/order 
+        # enforce a stable, lean schema/order
         cols_order = [
-            "feature_id","site_id","tier","event_date","event_ts",
-            "metadata_url","s3_prefix","geom_version",
-            "resolution_m","huc8","state","basin","source","access_rights",
-            "centroid","bbox", "return_period"
+            "feature_id",
+            "site_id",
+            "tier",
+            "event_date",
+            "event_ts",
+            "metadata_url",
+            "s3_prefix",
+            "geom_version",
+            "resolution_m",
+            "huc8",
+            "state",
+            "basin",
+            "source",
+            "access_rights",
+            "centroid",
+            "bbox",
+            "return_period",
         ]
-        cols_order = [c for c in cols_order if c in gdf.columns] + \
-                     [c for c in gdf.columns if c not in cols_order and c != "geometry"]
+        cols_order = [c for c in cols_order if c in gdf.columns] + [
+            c for c in gdf.columns if c not in cols_order and c != "geometry"
+        ]
         gdf = gdf[cols_order + ["geometry"]]
 
         gdf.to_file(args.out_geojson, driver="GeoJSON")
@@ -443,6 +510,7 @@ def main():
         print("[info] --skip-geometry set; FIM_extents.geojson will not be written")
     else:
         print("[warn] no geometries found; FIM_extents.geojson will not be written")
+
 
 if __name__ == "__main__":
     try:

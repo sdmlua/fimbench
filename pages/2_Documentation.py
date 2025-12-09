@@ -1,10 +1,11 @@
 """
 This page documents how to access benchmark flood inundation data that were vizualized and are within
-the benchmark database. 
+the benchmark database.
 
 Author: Supath Dhital
 Date 29 November, 2025
 """
+
 import streamlit as st
 from utilis.ui import inject_globalfont
 from utilis.home_page import apply_page_style
@@ -15,7 +16,7 @@ st.set_page_config(layout="wide")
 inject_globalfont(font_size_px=18, sidebar_font_size_px=22)
 apply_page_style()
 
-#Page title and intro
+# Page title and intro
 st.title("Accessing Benchmark Data")
 
 st.markdown(
@@ -51,7 +52,7 @@ conda activate fimbench
 st.code(setup_conda, language="bash")
 
 st.markdown("**Option B – Using venv (built-in Python)**")
-setup_venv =  """
+setup_venv = """
 # Create env in folder .venv
 python -m fimbench .venv
 
@@ -64,10 +65,12 @@ source .venv/bin/activate
 st.code(setup_venv, language="bash")
 
 st.markdown("**Option C – Using uv**")
-st.markdown("""
+st.markdown(
+    """
             `uv` is a lightweight tool for creating and managing virtual environments and can be installed via pip:
             `pip install uv`.
-            """)
+            """
+)
 setup_uv = """
 # Create and activate env in one step
 uv venv
@@ -87,7 +90,8 @@ OR
 ```bash
 uv pip install fimeval      #This makes way much faster installation.
 ```
-""")
+"""
+)
 
 python_onlybenchmark = '''
 # Import the fimeval package you installed in your virtual environment
@@ -415,7 +419,7 @@ fm.run_evaluation(
 )
 '''
 
-#Expanders for each section
+# Expanders for each section
 with st.expander("**1. Accessing ONLY BENCHMARK DATA**"):
     st.markdown(
         """
@@ -449,4 +453,4 @@ want to evaluate their generated FIMs against benchmark datasets.
 This FIMserv runs on HUC8 basis, so the user need to provide HUC8 and event date to query and download the benchmark FIMs.
         """
     )
-    st.code(python_fimevalwithfimserve, language="python")  
+    st.code(python_fimevalwithfimserve, language="python")

@@ -3,6 +3,8 @@ import streamlit as st
 """
 Utility functions for Streamlit UI customization.
 """
+
+
 def inject_globalfont(font_size_px=16, sidebar_font_size_px=20, sidebar_width_px=340):
     st.markdown(
         f"""
@@ -52,5 +54,5 @@ def inject_globalfont(font_size_px=16, sidebar_font_size_px=20, sidebar_width_px
         }}
         </style>
         """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )

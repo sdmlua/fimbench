@@ -1,6 +1,7 @@
 """
 Main Home page for FIM Benchmark Viewer app.
 """
+
 import streamlit as st
 from utilis.ui import inject_globalfont
 from utilis.home_page import (
@@ -36,13 +37,13 @@ st.markdown(
         }}
     </style>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
-#Apply Styles
+# Apply Styles
 apply_page_style()
 
-#Render Sticky Header 
+# Render Sticky Header
 render_sticky_header("./images/banner.jpg", height_px=120)
 
 # Render Page Sections

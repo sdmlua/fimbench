@@ -10,10 +10,12 @@ from botocore.exceptions import NoCredentialsError, ClientError
 
 BUCKET = "sdmlab"
 
+
 # helpers for direct S3 file links
 def s3_http_url(bucket: str, key: str) -> str:
     """Build a public-style S3 HTTPS URL (works for public buckets)."""
     return f"https://{bucket}.s3.amazonaws.com/{urllib.parse.quote(key, safe='/')}"
+
 
 def _head_ok(url: str, timeout: float = 5.0) -> bool:
     """Lightweight existence check using HTTP HEAD (no creds needed)."""
@@ -23,7 +25,10 @@ def _head_ok(url: str, timeout: float = 5.0) -> bool:
     except requests.RequestException:
         return False
 
-def find_json_in_folder(bucket: str, folder: str, tif_filename: str | None) -> str | None:
+
+def find_json_in_folder(
+    bucket: str, folder: str, tif_filename: str | None
+) -> str | None:
     """
     Find a metadata .json in the same folder without requiring AWS credentials.
 

@@ -26,8 +26,8 @@ inject_globalfont(font_size_px=18, sidebar_font_size_px=22)
 apply_page_style()
 
 # CONFIG
-BUCKET    = "sdmlab"
-CORE_KEY  = "FIM_Database/FIM_Viz/catalog_core.json"
+BUCKET = "sdmlab"
+CORE_KEY = "FIM_Database/FIM_Viz/catalog_core.json"
 TILES_KEY = "FIM_Database/FIM_Viz/tiles"
 
 # Max features to draw at once
@@ -44,21 +44,26 @@ DEFAULT_TIER_COLOR = "#2687c8"
 
 BASEMAPS = {
     "OpenStreetMap": dict(tiles="OpenStreetMap", attr="© OpenStreetMap"),
-    "CartoDB Positron": dict(tiles="CartoDB positron", attr="© OpenStreetMap contributors, © CARTO"),
+    "CartoDB Positron": dict(
+        tiles="CartoDB positron", attr="© OpenStreetMap contributors, © CARTO"
+    ),
     "Esri WorldTopoMap": dict(
         tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
-        attr="Tiles © Esri — Sources: Esri, HERE, Garmin, FAO, NOAA, and others"
+        attr="Tiles © Esri — Sources: Esri, HERE, Garmin, FAO, NOAA, and others",
     ),
     "Esri WorldImagery": dict(
         tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        attr="Tiles © Esri, Maxar, Earthstar Geographics, GIS User Community"
+        attr="Tiles © Esri, Maxar, Earthstar Geographics, GIS User Community",
     ),
 }
+
 
 # HELPERS
 def http_url(key: str) -> str:
     from urllib.parse import quote
+
     return f"https://{BUCKET}.s3.amazonaws.com/{quote(key, safe='/')}"
+
 
 @st.cache_data(show_spinner=False, ttl=86400)
 def fetch_json(url: str) -> Dict[str, Any]:
@@ -66,14 +71,17 @@ def fetch_json(url: str) -> Dict[str, Any]:
     r.raise_for_status()
     return r.json()
 
+
 @st.cache_data(show_spinner=False)
 def fingerprint_ids(ids: Iterable[str]) -> str:
     arr = sorted([str(x) for x in ids])
     return hashlib.sha1(("\n".join(arr)).encode("utf-8")).hexdigest()
 
+
 # Custom vector grid layer for folium
 class VectorGridProtobuf(MacroElement):
-    _template = Template("""
+    _template = Template(
+        """
         {% macro script(this, kwargs) %}
         (function ensureVectorGrid(cb){
           if (window.L && L.vectorGrid) { cb(); return; }
@@ -153,31 +161,36 @@ class VectorGridProtobuf(MacroElement):
           window.__fimGrid = grid;
         });
         {% endmacro %}
-    """)
+    """
+    )
+
     def __init__(
         self,
         tiles_url: str,
         layer_name: str = "fim_extents",
-        tier_colors: Optional[Dict[str,str]] = None,
+        tier_colors: Optional[Dict[str, str]] = None,
         max_native: int = 14,
         allowed_tiers: Optional[List[str]] = None,
         date_min: int = 0,
-        date_max: int = 99999999
+        date_max: int = 99999999,
     ):
         super().__init__()
         if tier_colors is None:
             tier_colors = TIER_COLORS
-        self.tiles_url      = tiles_url
-        self.layer_name     = layer_name
-        self.tier_colors    = json.dumps(tier_colors)
-        self.default_color  = DEFAULT_TIER_COLOR
-        self.max_native     = max_native
-        self.allowed_tiers  = json.dumps([str(x) for x in (allowed_tiers or [])])
-        self.date_min       = int(date_min)
-        self.date_max       = int(date_max)
-        
+        self.tiles_url = tiles_url
+        self.layer_name = layer_name
+        self.tier_colors = json.dumps(tier_colors)
+        self.default_color = DEFAULT_TIER_COLOR
+        self.max_native = max_native
+        self.allowed_tiers = json.dumps([str(x) for x in (allowed_tiers or [])])
+        self.date_min = int(date_min)
+        self.date_max = int(date_max)
+
+
 # Streamlit page boot
-st.set_page_config(page_title="Interactive FIM Vizualizer", page_icon="🌊", layout="wide")
+st.set_page_config(
+    page_title="Interactive FIM Vizualizer", page_icon="🌊", layout="wide"
+)
 st.title("FIMbench Dashboard")
 
 # Session defaults
@@ -189,7 +202,7 @@ if "saved_zoom" not in ss:
 if "fim_show" not in ss:
     ss.fim_show = False
 if "filters_changed" not in ss:
-    ss.filters_changed = True 
+    ss.filters_changed = True
 if "map_built_once" not in ss:
     ss.map_built_once = False
 
@@ -207,13 +220,15 @@ with st.sidebar:
 if "catalog_records" not in ss:
     core = fetch_json(http_url(CORE_KEY))
     ss.catalog_records = core.get("records", [])
-    ss.core_errors     = core.get("errors", [])
+    ss.core_errors = core.get("errors", [])
 
 records: List[Dict[str, Any]] = ss.catalog_records
 load_errors = ss.get("core_errors", [])
 
 if load_errors:
-    with st.expander(f"{len(load_errors)} metadata issue(s) — click for details", expanded=False):
+    with st.expander(
+        f"{len(load_errors)} metadata issue(s) — click for details", expanded=False
+    ):
         for key, msg in load_errors[:50]:
             st.markdown(f"- **{key}**")
             st.code(msg, language="text")
@@ -226,32 +241,55 @@ if not records:
 
 # Filters
 all_tiers = sorted({r.get("tier", "Unknown_Tier") for r in records})
-dates_all = sorted([r["date_ymd"] for r in records if (r.get("tier") != "Tier_4") and r.get("date_ymd")])
+dates_all = sorted(
+    [
+        r["date_ymd"]
+        for r in records
+        if (r.get("tier") != "Tier_4") and r.get("date_ymd")
+    ]
+)
 min_date = dt.date.fromisoformat(dates_all[0]) if dates_all else dt.date(2000, 1, 1)
 max_date = dt.date.fromisoformat(dates_all[-1]) if dates_all else dt.date.today()
-rp_all   = sorted({r.get("return_period") for r in records if r.get("tier") == "Tier_4" and r.get("return_period") is not None})
+rp_all = sorted(
+    {
+        r.get("return_period")
+        for r in records
+        if r.get("tier") == "Tier_4" and r.get("return_period") is not None
+    }
+)
 
 with st.sidebar:
     st.header("Filters")
     with st.form("filters_form", clear_on_submit=False):
-        sel_tiers = st.multiselect("Select FIM Tiers from Database", options=all_tiers, default=all_tiers)
+        sel_tiers = st.multiselect(
+            "Select FIM Tiers from Database", options=all_tiers, default=all_tiers
+        )
 
         show_date_filter = any(t != "Tier_4" for t in sel_tiers)
         if show_date_filter:
             dr = st.date_input(
                 "Date range (non-synthetic)",
-                value=(min_date, max_date), min_value=min_date, max_value=max_date, format="YYYY-MM-DD"
+                value=(min_date, max_date),
+                min_value=min_date,
+                max_value=max_date,
+                format="YYYY-MM-DD",
             )
         else:
             dr = None
 
         show_rp_filter = ("Tier_4" in sel_tiers) and bool(rp_all)
         if show_rp_filter:
-            sel_rps = st.multiselect("Return periods (For synthetic benchark Tier_4, years)", options=rp_all, default=rp_all)
+            sel_rps = st.multiselect(
+                "Return periods (For synthetic benchark Tier_4, years)",
+                options=rp_all,
+                default=rp_all,
+            )
         else:
             sel_rps = None
 
-        show_polys = st.checkbox("Show Flood Inundation Mapping Extent", value=ss.get("fim_show", False))
+        show_polys = st.checkbox(
+            "Show Flood Inundation Mapping Extent", value=ss.get("fim_show", False)
+        )
 
         apply_filters = st.form_submit_button("Apply Filters", use_container_width=True)
 
@@ -267,6 +305,7 @@ if isinstance(dr, tuple) and len(dr) == 2:
 else:
     start_date, end_date = min_date, max_date
 
+
 def in_date_range(r) -> bool:
     iso = r.get("date_ymd")
     if not iso:
@@ -275,7 +314,8 @@ def in_date_range(r) -> bool:
         d = dt.date.fromisoformat(iso)
     except Exception:
         return False
-    return (start_date <= d <= end_date)
+    return start_date <= d <= end_date
+
 
 def pass_filters(r) -> bool:
     rtier = r.get("tier")
@@ -291,12 +331,14 @@ def pass_filters(r) -> bool:
             return True
         return in_date_range(r)
 
+
 if apply_filters:
     ss.filters_changed = True
 
 filtered = [r for r in records if pass_filters(r)]
 filtered_ids = [str(r["id"]) for r in filtered]
 ids_key = fingerprint_ids(filtered_ids)
+
 
 # Map helpers
 def feature_cap_by_zoom(zoom: float) -> int:
@@ -310,6 +352,7 @@ def feature_cap_by_zoom(zoom: float) -> int:
         return 30
     return BASE_FEATURE_CAP
 
+
 @st.fragment
 def render_map():
     # Base map
@@ -318,21 +361,28 @@ def render_map():
         zoom_start=ss.saved_zoom,
         tiles=None,
         control_scale=True,
-        prefer_canvas=True
+        prefer_canvas=True,
     )
     # Fullscreen control (kept away from LayerControl and your legend)
     Fullscreen(
         position="topleft",
         title="Full screen",
         title_cancel="Exit full screen",
-        force_separate_button=True
+        force_separate_button=True,
     ).add_to(m)
 
     bm = BASEMAPS[basemap_choice]
-    folium.TileLayer(tiles=bm["tiles"], name=basemap_choice, control=False, attr=bm["attr"], show=True).add_to(m)
+    folium.TileLayer(
+        tiles=bm["tiles"],
+        name=basemap_choice,
+        control=False,
+        attr=bm["attr"],
+        show=True,
+    ).add_to(m)
+
     # Markers
     def popup_html(r: dict) -> str:
-        tif_url  = r.get("tif_url")
+        tif_url = r.get("tif_url")
         gpkg_url = r.get("gpkg_url") or r.get("gpkgurl")
         json_url = r.get("json_url") or r.get("metadata_url")
 
@@ -341,7 +391,13 @@ def render_map():
         date_disp = r.get("date_ymd") or r.get("date_of_flood")
 
         # HUC ID preference (8→12→6→4→2)
-        hucid = r.get("huc8") or r.get("huc12") or r.get("huc6") or r.get("huc4") or r.get("huc2")
+        hucid = (
+            r.get("huc8")
+            or r.get("huc12")
+            or r.get("huc6")
+            or r.get("huc4")
+            or r.get("huc2")
+        )
 
         fields = [
             ("File Name", r.get("file_name")),
@@ -351,7 +407,10 @@ def render_map():
             ("River Basin Name", basin),
             ("Source", r.get("source")),
             ("Date", date_disp),
-            ("Return Period (years)", r.get("return_period") if r.get("tier") == "Tier_4" else None),
+            (
+                "Return Period (years)",
+                r.get("return_period") if r.get("tier") == "Tier_4" else None,
+            ),
             ("Quality", r.get("quality")),
             ("HUC ID", hucid),  # NEW
         ]
@@ -414,11 +473,9 @@ def render_map():
         """
 
     markers_fg = MarkerCluster(
-        name="Benchmark FIM Sites",
-        show=True,
-        disableClusteringAtZoom=10
+        name="Benchmark FIM Sites", show=True, disableClusteringAtZoom=10
     )
-    
+
     for r in filtered:
         # Robust centroid handling
         cl = r.get("centroid")
@@ -429,7 +486,12 @@ def render_map():
                 cl = [lon_fb, lat_fb]
 
         # final guard
-        if not isinstance(cl, (list, tuple)) or len(cl) < 2 or cl[0] is None or cl[1] is None:
+        if (
+            not isinstance(cl, (list, tuple))
+            or len(cl) < 2
+            or cl[0] is None
+            or cl[1] is None
+        ):
             cl = [0.0, 0.0]
 
         lon = float(cl[0] or 0.0)
@@ -438,7 +500,12 @@ def render_map():
         color = TIER_COLORS.get(r.get("tier"), DEFAULT_TIER_COLOR)
         folium.CircleMarker(
             location=[lat, lon],
-            radius=8, color="black", weight=1.5, fill=True, fill_color=color, fill_opacity=0.9,
+            radius=8,
+            color="black",
+            weight=1.5,
+            fill=True,
+            fill_color=color,
+            fill_opacity=0.9,
             tooltip=f"{r.get('tier')} — {r.get('site')}",
             popup=folium.Popup(popup_html(r), max_width=500),
         ).add_to(markers_fg)
@@ -448,18 +515,18 @@ def render_map():
     # Vector tiles hosting from s3
     if ss.fim_show:
         allowed_tiers = list(set(sel_tiers))
-        date_min = int((start_date or dt.date(1900,1,1)).strftime("%Y%m%d"))
-        date_max = int((end_date   or dt.date(2100,1,1)).strftime("%Y%m%d"))
+        date_min = int((start_date or dt.date(1900, 1, 1)).strftime("%Y%m%d"))
+        date_max = int((end_date or dt.date(2100, 1, 1)).strftime("%Y%m%d"))
 
         # Put the vector grid into a FeatureGroup so it appears in LayerControl
         vg_group = folium.FeatureGroup(name="Benchmark FIM Extents", show=True)
         vg = VectorGridProtobuf(
-            tiles_url= "https://sdmlab.s3.amazonaws.com/FIM_Database/FIM_Viz/tiles/{z}/{x}/{y}.pbf",
+            tiles_url="https://sdmlab.s3.amazonaws.com/FIM_Database/FIM_Viz/tiles/{z}/{x}/{y}.pbf",
             layer_name="fim_extents",
             max_native=14,
             allowed_tiers=allowed_tiers,
             date_min=date_min,
-            date_max=date_max
+            date_max=date_max,
         )
         vg_group.add_child(vg)
         vg_group.add_to(m)
@@ -467,11 +534,10 @@ def render_map():
     # Legend
     legend_items = "".join(
         (
-            lambda color: 
-            f"<div style='display:flex;align-items:center;margin-bottom:6px'>"
+            lambda color: f"<div style='display:flex;align-items:center;margin-bottom:6px'>"
             f"<span style='display:inline-block;width:16px;height:16px;"
-            f"background:{DEFAULT_TIER_COLOR};"     
-            f"border:2px solid {color};"          
+            f"background:{DEFAULT_TIER_COLOR};"
+            f"border:2px solid {color};"
             f"border-radius:2px;"
             f"margin-right:8px'></span>"
             f"<span style='font-size:14px'>{t}</span></div>"
@@ -491,27 +557,23 @@ def render_map():
     folium.LayerControl(collapsed=False).add_to(m)
 
     # Render in Streamlit
-    st_folium(
-        m,
-        width=None,
-        height=720,
-        key="fim_map",
-        returned_objects=[]
-    )
+    st_folium(m, width=None, height=720, key="fim_map", returned_objects=[])
 
     if ss.filters_changed or not ss.map_built_once:
         ss.map_built_once = True
         ss.filters_changed = False
-        
+
+
 render_map()
 
-#Render the table
+# Render the table
 PLATFORM_BY_TIER = {
     "Tier_1": "Hand Labeled Aerial Imagery",
     "Tier_2": "Planet Satellite Imagery",
     "Tier_3": "Sentinel-1 Imagery",
     "Tier_4": "Synthetic HEC-RAS 1D",
 }
+
 
 def dash(x):
     """Return a dash for empty values, else the value itself."""
@@ -520,6 +582,7 @@ def dash(x):
     if isinstance(x, str) and x.strip() == "":
         return "–"
     return x
+
 
 def to_date_key(r: dict) -> int:
     ets = r.get("event_ts")
@@ -540,6 +603,7 @@ def to_date_key(r: dict) -> int:
         return int(v)
     return 0
 
+
 def nice_date_and_year(r: dict) -> tuple[str, str]:
     for k in ("event_date", "date_ymd"):
         v = r.get(k)
@@ -559,6 +623,7 @@ def nice_date_and_year(r: dict) -> tuple[str, str]:
         disp = raw if raw else ""
     return disp, year
 
+
 def row_from_record(r: dict) -> dict:
     date_disp, year = nice_date_and_year(r)
     basin = r.get("basin")
@@ -570,15 +635,20 @@ def row_from_record(r: dict) -> dict:
         "State": dash(r.get("state")),
         "Year": dash(year),
         "Date": dash(date_disp),
-        "Resolution (m)": r.get("resolution_m") if isinstance(r.get("resolution_m"), (int, float)) else "–",
+        "Resolution (m)": (
+            r.get("resolution_m")
+            if isinstance(r.get("resolution_m"), (int, float))
+            else "–"
+        ),
         "HUC8": dash(r.get("huc8")),
         "Quality": dash(r.get("quality") or r.get("tier")),
         "Platform": platform,
         "Download FIM (TIF)": dash(r.get("tif_url")),
         "Metadata (JSON)": dash(r.get("json_url") or r.get("metadata_url")),
-        "_DateKey": to_date_key(r),  
+        "_DateKey": to_date_key(r),
     }
-    
+
+
 table_rows = [row_from_record(r) for r in filtered]
 df_full = pd.DataFrame(table_rows)
 
@@ -601,7 +671,10 @@ df_page = df_display.iloc[start_idx:end_idx]
 # Show current page
 st.markdown("# Benchmark FIM Records on Tabular View")
 st.write("")
-st.markdown("<hr style='border:0.5px solid rgba(44,127,184,0.35); margin:1rem 0;' />", unsafe_allow_html=True)
+st.markdown(
+    "<hr style='border:0.5px solid rgba(44,127,184,0.35); margin:1rem 0;' />",
+    unsafe_allow_html=True,
+)
 st.write("")
 
 # dataframe styling
@@ -623,18 +696,22 @@ st.markdown(
     }
     </style>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
 st.dataframe(
     df_page,
-    width='stretch',
+    width="stretch",
     hide_index=True,
     column_config={
-        "Download FIM (TIF)": st.column_config.LinkColumn("Download FIM (TIF)", display_text="Download"),
-        "Metadata (JSON)": st.column_config.LinkColumn("Metadata (JSON)", display_text="Open"),
+        "Download FIM (TIF)": st.column_config.LinkColumn(
+            "Download FIM (TIF)", display_text="Download"
+        ),
+        "Metadata (JSON)": st.column_config.LinkColumn(
+            "Metadata (JSON)", display_text="Open"
+        ),
         "Resolution (m)": st.column_config.NumberColumn(format="%.2f"),
-    }
+    },
 )
 
 # Pager
@@ -648,7 +725,9 @@ with c3:
         ss.table_page += 1
         st.rerun()
 
-st.caption(f"Page {ss.table_page + 1} of {total_pages} — Showing {len(df_page):,} of {len(df_display):,} records")
+st.caption(
+    f"Page {ss.table_page + 1} of {total_pages} — Showing {len(df_page):,} of {len(df_display):,} records"
+)
 
 
 # MAP ACTIONS
@@ -668,5 +747,3 @@ with st.sidebar:
         ss.saved_center = [39.8283, -98.5795]
         ss.saved_zoom = 5.0
         ss.filters_changed = True
-
-
