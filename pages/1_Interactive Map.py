@@ -17,6 +17,9 @@ from folium.plugins import MarkerCluster
 from branca.element import Element, MacroElement
 from jinja2 import Template
 import json
+import ast
+from urllib.parse import urlparse, unquote
+from pathlib import Path
 from folium.plugins import MarkerCluster, Fullscreen
 
 from utilis.ui import inject_globalfont
@@ -339,6 +342,27 @@ filtered = [r for r in records if pass_filters(r)]
 filtered_ids = [str(r["id"]) for r in filtered]
 ids_key = fingerprint_ids(filtered_ids)
 
+#clean list for the HUC list and the basin name in popup
+def _as_clean_list_text(v) -> str:
+    if v is None:
+        return ""
+    if isinstance(v, list):
+        return ", ".join([str(x).strip() for x in v if str(x).strip()])
+    if isinstance(v, str):
+        s = v.strip()
+        if not s:
+            return ""
+        if (s.startswith("[") and s.endswith("]")):
+            try:
+                parsed = ast.literal_eval(s)
+                if isinstance(parsed, (list, tuple)):
+                    return ", ".join([str(x).strip() for x in parsed if str(x).strip()])
+            except Exception:
+                pass
+        # Otherwise treat as already a string
+        return s.replace('"', "").replace("'", "")
+    return str(v).strip()
+
 
 # Map helpers
 def feature_cap_by_zoom(zoom: float) -> int:
@@ -363,7 +387,7 @@ def render_map():
         control_scale=True,
         prefer_canvas=True,
     )
-    # Fullscreen control (kept away from LayerControl and your legend)
+    # Fullscreen control
     Fullscreen(
         position="topleft",
         title="Full screen",
@@ -386,62 +410,83 @@ def render_map():
         gpkg_url = r.get("gpkg_url") or r.get("gpkgurl")
         json_url = r.get("json_url") or r.get("metadata_url")
 
-        # Prefer new names
-        basin = r.get("basin") or r.get("river_basin")
-        date_disp = r.get("date_ymd") or r.get("date_of_flood")
-
-        # HUC ID preference (8→12→6→4→2)
-        hucid = (
-            r.get("huc8")
-            or r.get("huc12")
-            or r.get("huc6")
-            or r.get("huc4")
-            or r.get("huc2")
+        tier = r.get("tier") or ""
+        basin_txt = _as_clean_list_text(r.get("basin") or r.get("river_basin"))
+        huc_txt   = _as_clean_list_text(
+            r.get("huc8") or r.get("huc12") or r.get("huc6") or r.get("huc4") or r.get("huc2")
         )
 
+        # Date (non Tier_4 only)
+        date_disp = ""
+        if tier != "Tier_4":
+            date_disp = r.get("date_ymd") or r.get("date_of_flood") or ""
+
+        # Return Period (Tier_4 only)
+        rp_disp = ""
+        if tier == "Tier_4":
+            rp = r.get("return_period")
+            rp_disp = "" if rp is None else str(rp)
+
+        # Build rows based on tier rules
         fields = [
             ("File Name", r.get("file_name")),
             ("Resolution (m)", r.get("resolution_m")),
             ("State", r.get("state")),
             ("Description", r.get("description")),
-            ("River Basin Name", basin),
+            ("River Basin Name", basin_txt),
             ("Source", r.get("source")),
-            ("Date", date_disp),
-            (
-                "Return Period (years)",
-                r.get("return_period") if r.get("tier") == "Tier_4" else None,
-            ),
-            ("Quality", r.get("quality")),
-            ("HUC ID", hucid),  # NEW
         ]
+
+        if tier == "Tier_4":
+            fields.append(("Return Period (years)", rp_disp))
+        else:
+            fields.append(("Date", date_disp))
+
+        # optional extras
+        fields += [
+            ("Quality", r.get("quality") or tier),
+            ("HUC ID", huc_txt),
+        ]
+
+        def _fmt_val(v):
+            if v is None:
+                return ""
+            if isinstance(v, float):
+                # keep it clean for resolution
+                return f"{v:g}"
+            return str(v)
+
         rows = "".join(
-            f"<tr><th style='text-align:left;vertical-align:top;padding-right:8px'>{k}</th>"
-            f"<td style='text-align:left'>{'' if v is None else v}</td></tr>"
+            f"<tr>"
+            f"<th style='text-align:left;vertical-align:top;padding-right:10px;white-space:nowrap'>{k}</th>"
+            f"<td style='text-align:left'>{_fmt_val(v)}</td>"
+            f"</tr>"
             for k, v in fields
+            if (v is not None and str(v).strip() != "")
         )
 
         refs = r.get("references") or []
         refs_html = ""
         if refs:
-            refs_html = "<div style='margin-top:6px'><b>References</b><div style='margin:4px 0;padding-left:12px'>"
+            refs_html = "<div style='margin-top:8px'><b>References</b><ol style='margin:6px 0 0 18px;padding:0'>"
             for ref in refs:
-                refs_html += f"<div style='margin-bottom:6px'>{ref}</div>"
-            refs_html += "</div></div>"
+                refs_html += f"<li style='margin-bottom:6px'>{ref}</li>"
+            refs_html += "</ol></div>"
 
-        # Two-column buttons: left (TIF + JSON), right (GPKG)
+        # Buttons
         left_btns = ""
         if tif_url:
             left_btns += f"""
             <a href="{tif_url}" target="_blank" rel="noopener"
             style="text-decoration:none;display:block;background:#2563eb;color:#fff;
-                    padding:8px 10px;border-radius:6px;font-weight:600;margin:0 0 8px;">
+                    padding:8px 10px;border-radius:8px;font-weight:650;margin:0 0 8px;">
             ⬇ Download Benchmark FIM (.tif)
             </a>"""
         if json_url:
             left_btns += f"""
             <a href="{json_url}" target="_blank" rel="noopener"
             style="text-decoration:none;display:block;background:#059669;color:#fff;
-                    padding:8px 10px;border-radius:6px;font-weight:600;">
+                    padding:8px 10px;border-radius:8px;font-weight:650;">
             ⬇ Download Metadata (.json)
             </a>"""
 
@@ -450,25 +495,26 @@ def render_map():
             right_btn = f"""
             <a href="{gpkg_url}" target="_blank" rel="noopener"
             style="text-decoration:none;display:block;background:#374151;color:#fff;
-                    padding:8px 10px;border-radius:6px;font-weight:600;">
+                    padding:8px 10px;border-radius:8px;font-weight:650;">
             ⬇ Download Benchmark FIM (.gpkg)
             </a>"""
 
         buttons_html = ""
         if left_btns or right_btn:
             buttons_html = f"""
-            <div style="display:flex;gap:10px;margin-top:6px;">
+            <div style="display:flex;gap:10px;margin-top:10px;">
             <div style="flex:1;min-width:0;">{left_btns}</div>
             <div style="flex:1;min-width:0;">{right_btn}</div>
             </div>
             """
 
         return f"""
-        <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; font-size:13px; max-width:520px">
-            <table>{rows}</table>
-            {'<hr style="margin:6px 0" />' if refs_html or buttons_html else ''}
-            {refs_html}
-            {buttons_html}
+        <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+                    font-size:13px; line-height:1.25; max-width:560px">
+        <table style="border-collapse:collapse">{rows}</table>
+        {('<hr style="margin:10px 0" />' if (refs_html or buttons_html) else '')}
+        {refs_html}
+        {buttons_html}
         </div>
         """
 
@@ -623,31 +669,28 @@ def nice_date_and_year(r: dict) -> tuple[str, str]:
         disp = raw if raw else ""
     return disp, year
 
-
+#For each record, create a row for the table
 def row_from_record(r: dict) -> dict:
     date_disp, year = nice_date_and_year(r)
-    basin = r.get("basin")
-    if not basin:
-        basin = r.get("river_basin")
+    basin_raw = r.get("basin") or r.get("river_basin")
+    basin_txt = _as_clean_list_text(basin_raw)
+    huc8_txt = _as_clean_list_text(r.get("huc8"))
+
     platform = PLATFORM_BY_TIER.get(r.get("tier"), "–")
+
     return {
-        "River/Basin": dash(basin),
+        "River/Basin": dash(basin_txt),
         "State": dash(r.get("state")),
         "Year": dash(year),
         "Date": dash(date_disp),
-        "Resolution (m)": (
-            r.get("resolution_m")
-            if isinstance(r.get("resolution_m"), (int, float))
-            else "–"
-        ),
-        "HUC8": dash(r.get("huc8")),
+        "Resolution (m)": r.get("resolution_m") if isinstance(r.get("resolution_m"), (int, float)) else None,
+        "HUC8": dash(huc8_txt),
         "Quality": dash(r.get("quality") or r.get("tier")),
         "Platform": platform,
         "Download FIM (TIF)": dash(r.get("tif_url")),
         "Metadata (JSON)": dash(r.get("json_url") or r.get("metadata_url")),
         "_DateKey": to_date_key(r),
     }
-
 
 table_rows = [row_from_record(r) for r in filtered]
 df_full = pd.DataFrame(table_rows)
