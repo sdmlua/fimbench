@@ -9,7 +9,6 @@ from __future__ import annotations
 from typing import Optional, Dict, Any, List, Tuple
 from pathlib import Path
 import os
-import json
 
 import rasterio
 from rasterio.warp import transform_bounds
@@ -20,7 +19,6 @@ from shapely.ops import unary_union
 from .utilis import (
     load_catalog_core,
     download_fim_assets,
-    format_records_for_print,
     _to_date,
     _to_hour_or_none,
     _record_day,
@@ -33,7 +31,6 @@ from .utilis import (
     _is_synthetic_tier,
     _return_period_text,
     _tier_summary,
-    find_fims,
     _folder_from_record,
     _list_prefix,
     BUCKET,

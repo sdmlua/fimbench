@@ -16,8 +16,7 @@ import logging
 from queue import Queue
 from threading import Thread
 from pathlib import Path
-from typing import List, Dict, Any, Optional
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import List, Optional
 
 import pandas as pd
 import geopandas as gpd

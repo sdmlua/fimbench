@@ -11,7 +11,6 @@ Requirements:
 
 from __future__ import annotations
 import os
-import sys
 import json
 import re
 import codecs
@@ -20,8 +19,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple, Optional
 
 import boto3
-from botocore.exceptions import ClientError
-import pandas as pd
 
 
 class FIMCatalogBuilder:

@@ -22,6 +22,26 @@ from typing import Optional
 from arcgis.gis import GIS
 from arcgis.features import FeatureLayerCollection
 
+# Default FIMbench item metadata. Used when the caller does not pass its own;
+# any of these can be overridden per call (or a user can supply all of them).
+DEFAULT_TITLE = "BenchFIMExtents"
+DEFAULT_TAGS = (
+    "FIM, Flood Mapping, Benchmark FIM, Aerial Flood Extents, Hydrology, Planet, Sentinel"
+)
+DEFAULT_SUMMARY = (
+    "Curated benchmark Flood Inundation Maps (FIMs) from remote sensing, aerial observations, "
+    "and hydrodynamic models. Organized into quality-based tiers with HWM-derived flood maps. "
+    "Hosted on AWS S3 with open API access."
+)
+DEFAULT_DESCRIPTION = (
+    "Flood Inundation Mapping Benchmark (FIMbench) Repository- This repository provides a curated collection of benchmark Flood Inundation Maps (FIMs) "
+    "derived from multiple high-quality sources, including remote sensing imagery, aerial observations, and high-fidelity hydrodynamic model outputs. "
+    "The complete FIM inventory is organized into four quality-based tiers, along with an additional category containing High Water Mark (HWM)-derived flood maps. "
+    "All benchmark datasets are hosted in an AWS S3 bucket and can be accessed through an open API, enabling seamless integration into research pipelines, "
+    "visualization tools, and operational workflows."
+)
+DEFAULT_FOLDER = "BenchFIMData"
+
 
 @dataclass
 class PublishFIMExtent2ArcGISOnline:
@@ -226,9 +246,9 @@ class PublishFIMExtent2ArcGISOnline:
         published_item_id: Optional[str] = None,
         title: Optional[str] = None,
         service_name: Optional[str] = None,
-        tags: str = "",
-        summary: str = "",
-        description: str = "",
+        tags: Optional[str] = None,
+        summary: Optional[str] = None,
+        description: Optional[str] = None,
         folder: Optional[str] = None,
     ) -> PublishFIMExtent2ArcGISOnline:
         """
@@ -248,17 +268,19 @@ class PublishFIMExtent2ArcGISOnline:
         published_item_id : Optional[str]
             Item ID for update mode.
         title : Optional[str]
-            Title for new items.
+            Title for new items. Defaults to the FIMbench title if None.
         service_name : Optional[str]
             Service name for new items.
-        tags : str
-            Comma-separated tags.
-        summary : str
-            Short summary/snippet (appears in search results, max ~2048 chars recommended).
-        description : str
-            Full description of the item.
+        tags : Optional[str]
+            Comma-separated tags. Defaults to the FIMbench tags if None.
+        summary : Optional[str]
+            Short summary/snippet. Defaults to the FIMbench summary if None.
+        description : Optional[str]
+            Full description. Defaults to the FIMbench description if None.
         folder : Optional[str]
-            Folder name in ArcGIS Online.
+            Folder name in ArcGIS Online. Defaults to the FIMbench folder if None.
+
+        All metadata fields default to FIMbench values; pass your own to override.
             
         Returns:
         --------
@@ -268,6 +290,13 @@ class PublishFIMExtent2ArcGISOnline:
         mode = (mode or "").strip().lower()
         if mode not in {"auto", "new", "update"}:
             raise ValueError('mode must be one of: "auto", "new", "update"')
+
+        # Fall back to the FIMbench defaults; a user-supplied value always wins.
+        title = title if title is not None else DEFAULT_TITLE
+        tags = tags if tags is not None else DEFAULT_TAGS
+        summary = summary if summary is not None else DEFAULT_SUMMARY
+        description = description if description is not None else DEFAULT_DESCRIPTION
+        folder = folder if folder is not None else DEFAULT_FOLDER
 
         if mode in {"update"} or (mode == "auto" and published_item_id):
             if not published_item_id:

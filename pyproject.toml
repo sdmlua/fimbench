@@ -1,7 +1,7 @@
 [project]
 name = "fimbench"
 version = "0.1.0"
-description = "Flood inundation map (FIM) benchmarking utilities: preprocessing the floodmap to a standardized format before uploading to the FIMbench database, S3 database interaction, and querying for FIMbench ."
+description = "Flood inundation map (FIM) benchmarking utilities: preprocessing the floodmap to a standardized format before uploading to the FIMbench database, S3 database interaction, and querying for FIMbench."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
@@ -20,9 +20,10 @@ dependencies = [
   "botocore>=1.40",
   "geopandas>=1.1",
   "pandas>=2.2",
+  "numpy>=1.24",
   "shapely>=2.0",
-  "pyproj>=3.6",
   "rasterio>=1.3",
+  "requests>=2.31",
 ]
 
 [project.optional-dependencies]
@@ -42,7 +43,6 @@ dev = [
 
 [project.urls]
 Homepage = "https://github.com/sdmlua/fimbench"
-"FIM Visualizer" = "https://fimbench.streamlit.app/"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

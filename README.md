@@ -71,4 +71,4 @@ pip install -e ".[publish]"   # ArcGIS Online publishing
 
 Early development — the package modules are being populated incrementally.
 
-**Contact:** Supath Dhital — sdhital@ua.edu
+**Authors:** Supath Dhital — sdhital@ua.edu · Dipsikha Devi — ddevi@ua.edu

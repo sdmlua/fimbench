@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import os
-import mimetypes
 import pathlib
 
 ROOT = str(pathlib.Path(__file__).resolve().parents[1])

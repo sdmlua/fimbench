@@ -1,6 +1,6 @@
 # FIM Tiles Bundle
 
-This bundle contains a single utility `fim_tiles_cli.py` to convert your **extents** into fast **vector tiles** and (optionally) upload them to **S3 / CloudFront**. It also produces a ready‑to‑paste Leaflet.VectorGrid snippet for your Streamlit/Folium app.
+This bundle converts your **extents** into fast **vector tiles** and (optionally) uploads them to **S3 / CloudFront**. It also produces a ready‑to‑paste Leaflet.VectorGrid snippet for a web map app.
 
 ## What it does
 
@@ -11,7 +11,7 @@ This bundle contains a single utility `fim_tiles_cli.py` to convert your **exten
 5. Uploads to **S3** with correct `Content-Type` and `Content-Encoding`.
 6. Writes:
    - `tile_manifest.json` (URL template & layer name),
-   - `integration_snippet.py` (copy into your Streamlit script).
+   - `integration_snippet.py` (copy into your web map script).
 
 ## Requirements
 
@@ -65,10 +65,10 @@ Outputs:
 - The script sets these when using the `--s3-bucket` uploader.
 - If you front with CloudFront, pass `--cdn-domain YOUR_DIST_ID.cloudfront.net`.
 
-## Streamlit integration
+## Web map integration
 
 Open `out_tiles/integration_snippet.py` and copy the `VectorGridProtobuf` MacroElement class and the `m.add_child(VectorGridProtobuf())` call into your app. Replace the tile URL if needed.
 
 ## Per‑tier tiles (optional)
 
-To keep tiles ultra-light and filter by tier on the client without JS logic, you can run the utility separately for each subset (Tier_1, Tier_2, …) by pre-filtering your Parquet to a temporary GeoJSON and then calling the CLI; add one VectorGrid layer per tier and toggle based on the sidebar.
+To keep tiles ultra-light and filter by tier on the client without JS logic, you can run the utility separately for each subset (Tier_1, Tier_2, …) by pre-filtering your Parquet to a temporary GeoJSON and then calling the CLI; add one VectorGrid layer per tier and toggle as needed.
