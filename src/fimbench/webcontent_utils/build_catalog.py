@@ -18,7 +18,8 @@ import datetime as dt
 from pathlib import Path
 from typing import Any, Dict, List, Tuple, Optional
 
-import boto3
+from .._log import log as _log
+from ..publish.s3.s3_client import get_s3_client
 
 
 class FIMCatalogBuilder:
@@ -28,7 +29,10 @@ class FIMCatalogBuilder:
         prefix: str = "FIM_Database/",
         profile: Optional[str] = None,
         max_str_len: int = 2000,
-        out_dir: Optional[str | Path] = None
+        out_dir: Optional[str | Path] = None,
+        aws_access_key_id: Optional[str] = None,
+        aws_secret_access_key: Optional[str] = None,
+        region: Optional[str] = None,
     ):
         self.bucket = bucket
         self.prefix = prefix
@@ -38,8 +42,14 @@ class FIMCatalogBuilder:
         if self.out_dir:
             self.out_dir.mkdir(parents=True, exist_ok=True)
 
-        self.session = boto3.session.Session(profile_name=profile) if profile else boto3.session.Session()
-        self.s3 = self.session.client("s3")
+        # Pass keys to use them; else profile; else the device's configured
+        # credentials. Raises if none are available.
+        self.s3 = get_s3_client(
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+            region=region,
+            profile=profile,
+        )
 
         self._KNOWN_RP_VALUES = {2, 5, 10, 25, 50, 100, 200, 500, 1000}
         self._ymd_re = re.compile(r"(?<!\d)(\d{8})(?!\d)")
@@ -295,7 +305,7 @@ class FIMCatalogBuilder:
         ]
 
         total_files = len(meta_keys)
-        print(f"\n[INFO] Found {total_files} keys. Processing...", flush=True)
+        _log(f"[INFO] Found {total_files} keys. Processing...")
 
         for i, key in enumerate(meta_keys, 1):
             file_name_only = os.path.basename(key)
@@ -318,10 +328,10 @@ class FIMCatalogBuilder:
                 self.core_rows.append(core)
 
             except Exception as e:
-                print(f"\n[ERROR] Failed at {key}: {e}", flush=True)
+                _log(f"[ERROR] Failed at {key}: {e}")
                 self.errors.append((key, repr(e)))
 
-        print(f"\n[INFO] Processing complete for {len(self.core_rows)} records.", flush=True)
+        _log(f"[INFO] Processing complete for {len(self.core_rows)} records.")
 
         with open(core_path, "w", encoding="utf-8") as f:
             json.dump(
@@ -333,4 +343,4 @@ class FIMCatalogBuilder:
                 f,
                 indent=2,
             )
-        print(f"[INFO] Catalog core written to {core_path}", flush=True)
+        _log(f"[INFO] Catalog core written to {core_path}")

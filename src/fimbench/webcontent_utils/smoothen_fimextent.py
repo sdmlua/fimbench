@@ -6,6 +6,8 @@ import os
 from shapely.geometry import Polygon, MultiPolygon, mapping
 from shapely import simplify, set_precision
 
+from .._log import log as _log
+
 
 def chaikin_smooth(coords, iterations=3):
     pts = np.array(coords)
@@ -54,27 +56,27 @@ def process_flood_extents(
     smooth_iterations=4,
     coord_precision=5
 ):
-    print(f"Loading: {os.path.basename(input_path)}...")
+    _log(f"Loading: {os.path.basename(input_path)}...")
 
     with open(input_path, "r", encoding="utf-8") as f:
         raw = json.load(f)
 
     # Preserve all original attributes exactly as-is, indexed by row position
     attr_lookup = [feat["properties"] for feat in raw["features"]]
-    print(f"Loaded {len(attr_lookup)} features.")
+    _log(f"Loaded {len(attr_lookup)} features.")
 
     gdf = gpd.read_file(input_path, engine="pyogrio")
     gdf.columns = gdf.columns.str.strip()
-    print(f"Rows: {len(gdf)}")
+    _log(f"Rows: {len(gdf)}")
 
     utm_crs = gdf.estimate_utm_crs()
     gdf = gdf.to_crs(utm_crs)
-    print(f"Projected to UTM: {utm_crs.to_epsg()}")
+    _log(f"Projected to UTM: {utm_crs.to_epsg()}")
 
     gdf['geometry'] = simplify(gdf.geometry.values, tolerance=pre_tolerance, preserve_topology=False)
     gdf['geometry'] = set_precision(gdf.geometry.values, grid_size=1.0)
 
-    print(f"Smoothing (iterations={smooth_iterations})...")
+    _log(f"Smoothing (iterations={smooth_iterations})...")
     gdf['geometry'] = gdf['geometry'].apply(lambda g: smooth_polygon(g, iterations=smooth_iterations))
 
     if post_tolerance > 0:
@@ -83,7 +85,7 @@ def process_flood_extents(
     gdf = gdf.to_crs("EPSG:4326")
     gdf['geometry'] = gdf['geometry'].apply(lambda g: round_coords(g, coord_precision))
 
-    print("Assembling output GeoJSON...")
+    _log("Assembling output GeoJSON...")
     features = []
     for i, row in gdf.iterrows():
         features.append({
@@ -94,15 +96,15 @@ def process_flood_extents(
 
     output_geojson = {"type": "FeatureCollection", "features": features}
 
-    print(f"Exporting to: {output_path}")
+    _log(f"Exporting to: {output_path}")
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(output_geojson, f, ensure_ascii=False, separators=(',', ':'))
 
     in_mb  = os.path.getsize(input_path)  / 1e6
     out_mb = os.path.getsize(output_path) / 1e6
-    print("\nProcess complete!")
-    print(f"  Features : {len(features)}")
-    print(f"  File size: {in_mb:.1f} MB -> {out_mb:.1f} MB ({(1 - out_mb/in_mb)*100:.0f}% reduction)")
+    _log("Process complete!")
+    _log(f"  Features : {len(features)}")
+    _log(f"  File size: {in_mb:.1f} MB -> {out_mb:.1f} MB ({(1 - out_mb/in_mb)*100:.0f}% reduction)")
 
 
 if __name__ == "__main__":

@@ -12,10 +12,27 @@ from __future__ import annotations
 
 import json
 from io import BytesIO
+from pathlib import Path
 
 import requests
 import geopandas as gpd
 from shapely.ops import unary_union
+
+
+def list_input_tifs(input_path):
+    """
+    Resolve input_path to a list of .tif files.
+
+    Accepts a single .tif file or a folder (searched recursively). Raises
+    FileNotFoundError if the path does not exist.
+    """
+    p = Path(input_path)
+    if p.is_file():
+        return [p]
+    if p.is_dir():
+        return sorted(f for f in p.rglob("*.tif") if f.is_file())
+    raise FileNotFoundError(f"Input path not found: {p}")
+
 
 # Public ArcGIS REST service for WBD HUC8 boundaries.
 HUC8_REST_URL = (

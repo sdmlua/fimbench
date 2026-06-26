@@ -9,9 +9,9 @@ database format: renamed GeoTIFF, metadata.json, and AOI.gpkg per flood map.
 """
 
 import json
-from datetime import datetime
-from pathlib import Path
 import shutil
+import tempfile
+from pathlib import Path
 import numpy as np
 import rasterio
 from rasterio.features import shapes
@@ -21,7 +21,8 @@ from shapely.ops import unary_union
 from shapely.validation import make_valid
 import geopandas as gpd
 
-from .utils import get_intersected_huc8
+from .._log import log as _log
+from .utils import get_intersected_huc8, list_input_tifs
 
 
 class FemaBleProcessor:
@@ -51,15 +52,24 @@ class FemaBleProcessor:
         if simplify_tol is not None:
             self.SIMPLIFY_TOL = simplify_tol
 
+        # Folder for intermediate rasters; set per run in process().
+        self._work_dir = None
+
     def log(self, msg):
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
+        _log(msg)
+
+    def _work_path(self, name):
+        # Place an intermediate file in the work dir (else next to the input).
+        if self._work_dir is not None:
+            return Path(self._work_dir) / name
+        return Path(name)
 
     # Assign nodata, datatype and tile size
     def process_tif(self, input_tif, nodata_val=None, block_size=None):
         nodata_val = self.NODATA_VAL if nodata_val is None else nodata_val
         block_size = self.BLOCK_SIZE if block_size is None else block_size
         input_tif = Path(input_tif)
-        output_tif = input_tif.with_name(input_tif.stem + "_nodata.tif")
+        output_tif = self._work_path(input_tif.stem + "_nodata.tif")
         output_tif.parent.mkdir(parents=True, exist_ok=True)
 
         with rasterio.open(input_tif) as src:
@@ -96,7 +106,7 @@ class FemaBleProcessor:
     # Reproject to the target coordinate system (default EPSG:5070)
     def reproject_raster(self, input_file, target_epsg):
         input_file = Path(input_file)
-        output_file = input_file.with_name(input_file.stem + f"_reprojected_{target_epsg}.tif")
+        output_file = self._work_path(input_file.stem + f"_reprojected_{target_epsg}.tif")
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
         with rasterio.open(input_file) as src:
@@ -213,7 +223,7 @@ class FemaBleProcessor:
 
         geoms = list(results)
         if not geoms:
-            print("No flooded areas found in 5070 raster.")
+            self.log("No flooded areas found in 5070 raster.")
             return meta, None
 
         gdf1 = gpd.GeoDataFrame.from_features(geoms)
@@ -276,89 +286,113 @@ class FemaBleProcessor:
         gdf = gpd.GeoDataFrame([metadata_row], geometry=[unified], crs=crs)
         gdf.to_file(gpkg_path, layer="AOI", driver="GPKG")
 
-    def process(self, input_root, base_dest, event):
-        INPUT_ROOT = Path(input_root)
+    def process(self, input_path, base_dest, event, intermediate_folder=None):
+        """
+        Process a folder of rasters or a single .tif.
+
+        event: the synthetic return-period event (e.g. "100"), applied to all files.
+        intermediate_folder: where temporary rasters are written; defaults to a
+        fresh temp dir. Removed (best-effort) when processing finishes.
+        """
         BASE_DEST = Path(base_dest)
         EVENT = event
 
-        tif_list = sorted([p for p in INPUT_ROOT.rglob("*.tif") if p.is_file()])
+        tif_list = list_input_tifs(input_path)
         if not tif_list:
-            self.log(f"No .tif files found under {INPUT_ROOT}")
+            self.log(f"No .tif files found under {input_path}")
             return
 
-        self.log(f"Found {len(tif_list)} .tif file(s) under {INPUT_ROOT}")
+        self.log(f"Found {len(tif_list)} .tif file(s) under {input_path}")
 
-        for tif in tif_list:
-            try:
-                self.log(f"Processing: {tif}")
+        # Set up the intermediate work dir (temp if not provided).
+        if intermediate_folder is None:
+            self._work_dir = Path(tempfile.mkdtemp(prefix="fimbench_"))
+        else:
+            self._work_dir = Path(intermediate_folder)
+        self._work_dir.mkdir(parents=True, exist_ok=True)
 
-                # Pre-processing steps
-                nodata_tif = self.process_tif(tif)
-                out_5070 = self.reproject_raster(nodata_tif, 5070)
-                out_4326 = self.reproject_raster(nodata_tif, 4326)
-                res_m_float, res_str, res_txt = self.get_resolution_string(out_5070)
+        try:
+            for tif in tif_list:
+                try:
+                    self.log(f"Processing: {tif}")
 
-                # Centroid (4326) + DMS
-                x, y, raster_crs, b = self.get_raster_centroid(out_4326)
-                lon_str = self.decimal_to_dms_str(x, is_lat=False)
-                lat_str = self.decimal_to_dms_str(y, is_lat=True)
-                dms_code = lon_str + lat_str
+                    # Pre-processing steps
+                    nodata_tif = self.process_tif(tif)
+                    out_5070 = self.reproject_raster(nodata_tif, 5070)
+                    out_4326 = self.reproject_raster(nodata_tif, 4326)
+                    res_m_float, res_str, res_txt = self.get_resolution_string(out_5070)
 
-                # Metadata and geometry generation (return period comes from EVENT)
-                temp_filename = f"{self.SENSOR_CODE}_{res_str}_{EVENT}_{dms_code}_BM.tif"
+                    # Centroid (4326) + DMS
+                    x, y, raster_crs, b = self.get_raster_centroid(out_4326)
+                    lon_str = self.decimal_to_dms_str(x, is_lat=False)
+                    lat_str = self.decimal_to_dms_str(y, is_lat=True)
+                    dms_code = lon_str + lat_str
 
-                meta_dict, unified_geom = self.build_metadata_dict(
-                    out_4326, out_5070, temp_filename, res_m_float, res_txt, dms_code,
-                    x, y, "", [], [], EVENT
-                )
+                    # Metadata and geometry generation (return period comes from EVENT)
+                    temp_filename = f"{self.SENSOR_CODE}_{res_str}_{EVENT}_{dms_code}_BM.tif"
 
-                # HUC overlay via the ArcGIS REST service (unified_geom is in EPSG:5070)
-                huc8_list, name_list, state_list = get_intersected_huc8(unified_geom, 5070)
+                    meta_dict, unified_geom = self.build_metadata_dict(
+                        out_4326, out_5070, temp_filename, res_m_float, res_txt, dms_code,
+                        x, y, "", [], [], EVENT
+                    )
 
-                # Update the metadata dictionary with the actual HUC results
-                meta_dict["HUC8"] = huc8_list
-                meta_dict["River Basin Name"] = name_list
-                meta_dict["State"] = f"{state_list}, USA" if state_list else "USA"
-                meta_dict["Description"] = (
-                   f"The Flood Inundation Map (FIM) corresponds to FEMA Base Level Engineering "
-                    f"for the {EVENT} flood with a spatial resolution of {res_txt}. "
-                    f"The corresponding HUC IDs are {huc8_list}"
-                )
+                    # HUC overlay via the ArcGIS REST service (unified_geom is in EPSG:5070)
+                    huc8_list, name_list, state_list = get_intersected_huc8(unified_geom, 5070)
 
-                # File management
-                folder_name = f"{self.SENSOR_CODE}_{EVENT}_{dms_code}"
-                destination_folder = BASE_DEST / folder_name
-                destination_folder.mkdir(parents=True, exist_ok=True)
+                    # Update the metadata dictionary with the actual HUC results
+                    meta_dict["HUC8"] = huc8_list
+                    meta_dict["River Basin Name"] = name_list
+                    meta_dict["State"] = f"{state_list}, USA" if state_list else "USA"
+                    meta_dict["Description"] = (
+                       f"The Flood Inundation Map (FIM) corresponds to FEMA Base Level Engineering "
+                        f"for the {EVENT} flood with a spatial resolution of {res_txt}. "
+                        f"The corresponding HUC IDs are {huc8_list}"
+                    )
 
-                new_filename = f"{self.SENSOR_CODE}_{res_str}_{EVENT}_{dms_code}_BM.tif"
-                new_path = destination_folder / new_filename
+                    # File management
+                    folder_name = f"{self.SENSOR_CODE}_{EVENT}_{dms_code}"
+                    destination_folder = BASE_DEST / folder_name
+                    destination_folder.mkdir(parents=True, exist_ok=True)
 
-                shutil.copy2(out_4326, new_path)
-                self.log(f"Saved GeoTIFF: {new_path.name}")
+                    new_filename = f"{self.SENSOR_CODE}_{res_str}_{EVENT}_{dms_code}_BM.tif"
+                    new_path = destination_folder / new_filename
 
-                # Save JSON
-                metadata_filename = new_path.name.replace("BM.tif", "metadata.json")
-                metadata_path = new_path.parent / metadata_filename
-                with open(metadata_path, "w") as jf:
-                    json.dump(meta_dict, jf, indent=4)
-                self.log(f"Wrote metadata: {metadata_path.name}")
+                    shutil.copy2(out_4326, new_path)
+                    self.log(f"Saved GeoTIFF: {new_path.name}")
 
-                # AOI.gpkg
-                gpkg_path = new_path.parent / new_path.name.replace("BM.tif", "AOI.gpkg")
-                self.raster_data_bbox(out_4326, gpkg_path, meta_dict, nodata=self.NODATA_VAL)
-                self.log(f"Wrote AOI: {gpkg_path.name}")
+                    # Save JSON
+                    metadata_filename = new_path.name.replace("BM.tif", "metadata.json")
+                    metadata_path = new_path.parent / metadata_filename
+                    with open(metadata_path, "w") as jf:
+                        json.dump(meta_dict, jf, indent=4)
+                    self.log(f"Wrote metadata: {metadata_path.name}")
 
-            except Exception as e:
-                self.log(f"Skipped {tif.name} due to error: {e}")
-                import traceback
-                traceback.print_exc()
+                    # AOI.gpkg
+                    gpkg_path = new_path.parent / new_path.name.replace("BM.tif", "AOI.gpkg")
+                    self.raster_data_bbox(out_4326, gpkg_path, meta_dict, nodata=self.NODATA_VAL)
+                    self.log(f"Wrote AOI: {gpkg_path.name}")
 
-        self.log("Done.")
+                except Exception as e:
+                    self.log(f"Skipped {tif.name} due to error: {e}")
+                    import traceback
+                    traceback.print_exc()
+
+            self.log("Done.")
+        finally:
+            # Remove the intermediate work dir so the input folder stays clean
+            # (best-effort; ignore if it cannot be removed).
+            shutil.rmtree(self._work_dir, ignore_errors=True)
+            self._work_dir = None
 
 
-def process(input_root, base_dest, event, **overrides):
+def process(input_path, base_dest, event, intermediate_folder=None, **overrides):
     """
-    Convenience wrapper: run FemaBleProcessor over a folder of rasters.
-    Pass config overrides (e.g. source=..., simplify_tol=...) as keyword args.
+    Convenience wrapper: run FemaBleProcessor over a folder or a single .tif.
+
+    event: synthetic return-period event (e.g. "100").
+    intermediate_folder: temp raster dir (defaults to a temp dir, removed after).
+    Config overrides (e.g. source=...) are passed to the processor.
     """
-    FemaBleProcessor(**overrides).process(input_root, base_dest, event)
+    FemaBleProcessor(**overrides).process(
+        input_path, base_dest, event, intermediate_folder=intermediate_folder
+    )

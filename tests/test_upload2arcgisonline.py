@@ -2,15 +2,16 @@
 Test: publish extents to ArcGIS Online (fimbench.publish.PublishFIMExtent2ArcGISOnline).
 
 Needs the optional .[publish] extra (arcgis).
+Run with pytest; comment out any test function you do not want to run.
 """
-
-CLIENT_ID = "m4zR1DBSDiJQpxsH"
 
 import fimbench
 
+client_id = "m4zR1DBSDiJQpxsH"
+
 
 def test_publish_to_agol():
-    gis = fimbench.PublishFIMExtent2ArcGISOnline.connect_gis_oauth(client_id=CLIENT_ID)
+    gis = fimbench.PublishFIMExtent2ArcGISOnline.connect_gis_oauth(client_id=client_id)
     publisher = fimbench.PublishFIMExtent2ArcGISOnline(
         mode_used="init",
         geojson_item_id=None,
@@ -34,8 +35,3 @@ def test_publish_to_agol():
     print(f"\nSuccessfully {result.mode_used} layer!")
     print(f"Feature Layer Item ID: {result.feature_layer_item_id}")
     print(f"Feature Layer URL: {result.feature_layer_url}")
-
-
-if __name__ == "__main__":
-    # test_publish_to_agol()
-    pass

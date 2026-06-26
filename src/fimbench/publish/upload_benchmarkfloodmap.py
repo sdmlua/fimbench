@@ -17,6 +17,8 @@ from typing import Optional
 
 import boto3
 
+from .._log import log
+
 BUCKET = "sdmlab"
 PREFIX = "FIM_Database/"
 
@@ -64,6 +66,6 @@ def upload_benchmarkfloodmap(
         key = f"{base}/{rel}" if base else rel
         s3.upload_file(str(f), bucket, key)
         uploaded.append(key)
-        print(f"uploaded s3://{bucket}/{key}")
+        log(f"uploaded s3://{bucket}/{key}")
 
     return uploaded

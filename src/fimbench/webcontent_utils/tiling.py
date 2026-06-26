@@ -6,7 +6,6 @@ CatalogandTileManager: A class-based utility to process and upload FIM vector ti
 """
 
 import os
-import sys
 import json
 import shutil
 import subprocess
@@ -24,8 +23,10 @@ import boto3
 from botocore.config import Config
 from boto3.s3.transfer import TransferConfig
 
+from .._log import log as _log
 
-# Handle the FIMTile and Catalog processing_floodmap
+
+# Handle the FIM tile and catalog processing
 class CatalogandTileManager:
     def __init__(
         self,
@@ -35,9 +36,16 @@ class CatalogandTileManager:
         layer_name: str = "fim_extents",
         min_zoom: int = 3,
         max_zoom: int = 14,
+        aws_access_key_id: Optional[str] = None,
+        aws_secret_access_key: Optional[str] = None,
+        region: Optional[str] = None,
     ):
         """
         Initializes the manager with workspace and S3 configurations.
+
+        AWS credentials (only needed when s3_bucket is set): pass
+        aws_access_key_id + aws_secret_access_key to use explicit keys; leave
+        them None to use the device's configured credentials. Raises if none.
         """
         self.out_dir = Path(out_dir)
         self.out_dir.mkdir(parents=True, exist_ok=True)
@@ -55,7 +63,21 @@ class CatalogandTileManager:
                 retries={"max_attempts": 10, "mode": "adaptive"},
                 max_pool_connections=256,
             )
-            self.s3_client = boto3.client("s3", config=bcfg)
+            if aws_access_key_id and aws_secret_access_key:
+                session = boto3.session.Session(
+                    aws_access_key_id=aws_access_key_id,
+                    aws_secret_access_key=aws_secret_access_key,
+                    region_name=region,
+                )
+            else:
+                session = boto3.session.Session(region_name=region)
+            if session.get_credentials() is None:
+                raise RuntimeError(
+                    "No AWS credentials found. Pass aws_access_key_id and "
+                    "aws_secret_access_key, or configure credentials on the "
+                    "device (e.g. `aws configure` or environment variables)."
+                )
+            self.s3_client = session.client("s3", config=bcfg)
 
         # Internal paths for intermediate files
         self.tmp_geojson = self.out_dir / "fimextent.geojson"
@@ -64,13 +86,13 @@ class CatalogandTileManager:
 
     # Logging
     def _info(self, msg: str):
-        print(f"[INFO] {msg}", flush=True)
+        _log(f"[INFO] {msg}")
 
     def _warn(self, msg: str):
-        print(f"[WARN] {msg}", flush=True)
+        _log(f"[WARN] {msg}")
 
     def _err(self, msg: str):
-        print(f"[ERROR] {msg}", file=sys.stderr, flush=True)
+        _log(f"[ERROR] {msg}")
 
     # Upload helpers
     def _auto_workers(self) -> int:

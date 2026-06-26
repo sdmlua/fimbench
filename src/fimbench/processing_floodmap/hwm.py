@@ -10,9 +10,9 @@ flood start and end date.
 """
 
 import json
-from datetime import datetime
-from pathlib import Path
 import shutil
+import tempfile
+from pathlib import Path
 import numpy as np
 import rasterio
 from rasterio.features import shapes
@@ -22,7 +22,8 @@ from shapely.ops import unary_union
 from shapely.validation import make_valid
 import geopandas as gpd
 
-from .utils import get_intersected_huc8
+from .._log import log as _log
+from .utils import get_intersected_huc8, list_input_tifs
 
 
 class HwmProcessor:
@@ -52,15 +53,24 @@ class HwmProcessor:
         if simplify_tol is not None:
             self.SIMPLIFY_TOL = simplify_tol
 
+        # Folder for intermediate rasters; set per run in process().
+        self._work_dir = None
+
     def log(self, msg):
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
+        _log(msg)
+
+    def _work_path(self, name):
+        # Place an intermediate file in the work dir (else next to the input).
+        if self._work_dir is not None:
+            return Path(self._work_dir) / name
+        return Path(name)
 
     # Assign nodata, datatype and tile size
     def process_tif(self, input_tif, nodata_val=None, block_size=None):
         nodata_val = self.NODATA_VAL if nodata_val is None else nodata_val
         block_size = self.BLOCK_SIZE if block_size is None else block_size
         input_tif = Path(input_tif)
-        output_tif = input_tif.with_name(input_tif.stem + "_nodata.tif")
+        output_tif = self._work_path(input_tif.stem + "_nodata.tif")
         output_tif.parent.mkdir(parents=True, exist_ok=True)
 
         with rasterio.open(input_tif) as src:
@@ -97,7 +107,7 @@ class HwmProcessor:
     # Reproject to the target coordinate system (default EPSG:5070)
     def reproject_raster(self, input_file, target_epsg):
         input_file = Path(input_file)
-        output_file = input_file.with_name(input_file.stem + f"_reprojected_{target_epsg}.tif")
+        output_file = self._work_path(input_file.stem + f"_reprojected_{target_epsg}.tif")
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
         with rasterio.open(input_file) as src:
@@ -129,7 +139,7 @@ class HwmProcessor:
     # Resample the raster to a target resolution (default 10m) for visualization
     def resample_raster(self, in_file, target_res=10.0):
         in_file = Path(in_file)
-        out_file = in_file.with_name(in_file.stem + f"_{int(target_res)}m.tif")
+        out_file = self._work_path(in_file.stem + f"_{int(target_res)}m.tif")
 
         with rasterio.open(in_file) as src:
             # New dimensions from the target resolution (scale = current_res / target_res)
@@ -260,7 +270,7 @@ class HwmProcessor:
 
         geoms = list(results)
         if not geoms:
-            print("No flooded areas found in 5070 raster.")
+            self.log("No flooded areas found in 5070 raster.")
             meta["FIM_Geometry"] = None
             return meta, None
 
@@ -324,84 +334,114 @@ class HwmProcessor:
         gdf = gpd.GeoDataFrame([metadata_row], geometry=[unified], crs=crs)
         gdf.to_file(gpkg_path, layer="AOI", driver="GPKG")
 
-    def process(self, input_tif, base_dest, start_date, end_date):
-        INPUT_TIF = Path(input_tif)
+    def process(self, input_path, base_dest, start_date, end_date, intermediate_folder=None):
+        """
+        Process a folder of rasters or a single .tif.
+
+        start_date / end_date: the flood window (e.g. "160928" / "161009"),
+        applied to all files.
+        intermediate_folder: where temporary rasters are written; defaults to a
+        fresh temp dir. Removed (best-effort) when processing finishes.
+        """
         BASE_DEST = Path(base_dest)
-        if not INPUT_TIF.is_file():
-            raise FileNotFoundError(f"Input TIF not found: {INPUT_TIF}")
 
-        tif = INPUT_TIF
+        tif_list = list_input_tifs(input_path)
+        if not tif_list:
+            self.log(f"No .tif files found under {input_path}")
+            return
+
+        self.log(f"Found {len(tif_list)} .tif file(s) under {input_path}")
+
+        # Set up the intermediate work dir (temp if not provided).
+        if intermediate_folder is None:
+            self._work_dir = Path(tempfile.mkdtemp(prefix="fimbench_"))
+        else:
+            self._work_dir = Path(intermediate_folder)
+        self._work_dir.mkdir(parents=True, exist_ok=True)
+
         try:
-            self.log(f"Processing: {tif}")
+            for tif in tif_list:
+                try:
+                    self.log(f"Processing: {tif}")
 
-            # Pre-processing steps
-            nodata_tif = self.process_tif(tif)
-            out_5070 = self.reproject_raster(nodata_tif, 5070)
-            res_5070, final_crs = self.resample_raster(out_5070, target_res=10.0)
-            out_4326 = self.reproject_raster(nodata_tif, 4326)
-            res_m_float, res_str, res_txt = self.get_resolution_string(out_5070)
+                    # Pre-processing steps
+                    nodata_tif = self.process_tif(tif)
+                    out_5070 = self.reproject_raster(nodata_tif, 5070)
+                    res_5070, final_crs = self.resample_raster(out_5070, target_res=10.0)
+                    out_4326 = self.reproject_raster(nodata_tif, 4326)
+                    res_m_float, res_str, res_txt = self.get_resolution_string(out_5070)
 
-            # Centroid (4326) + DMS
-            x, y, raster_crs, b = self.get_raster_centroid(out_4326)
-            lon_str = self.decimal_to_dms_str(x, is_lat=False)
-            lat_str = self.decimal_to_dms_str(y, is_lat=True)
-            dms_code = lon_str + lat_str
+                    # Centroid (4326) + DMS
+                    x, y, raster_crs, b = self.get_raster_centroid(out_4326)
+                    lon_str = self.decimal_to_dms_str(x, is_lat=False)
+                    lat_str = self.decimal_to_dms_str(y, is_lat=True)
+                    dms_code = lon_str + lat_str
 
-            # Metadata and geometry generation (called first to get the merged geometry)
-            temp_filename = f"{self.SENSOR_CODE}_{res_str}_{start_date}_{end_date}_{dms_code}_BM.tif"
+                    # Metadata and geometry generation (called first to get the merged geometry)
+                    temp_filename = f"{self.SENSOR_CODE}_{res_str}_{start_date}_{end_date}_{dms_code}_BM.tif"
 
-            meta_dict, unified_geom = self.build_metadata_dict(
-                out_4326, res_5070, temp_filename, res_m_float, res_txt, dms_code,
-                x, y, "", [], [], start_date, end_date
-            )
+                    meta_dict, unified_geom = self.build_metadata_dict(
+                        out_4326, res_5070, temp_filename, res_m_float, res_txt, dms_code,
+                        x, y, "", [], [], start_date, end_date
+                    )
 
-            # HUC overlay via the ArcGIS REST service (geometry is in final_crs)
-            huc8_list, name_list, state_list = get_intersected_huc8(unified_geom, final_crs)
+                    # HUC overlay via the ArcGIS REST service (geometry is in final_crs)
+                    huc8_list, name_list, state_list = get_intersected_huc8(unified_geom, final_crs)
 
-            # Update the metadata dictionary with the actual HUC results
-            meta_dict["HUC8"] = huc8_list
-            meta_dict["River Basin Name"] = name_list
-            meta_dict["State"] = f"{state_list}, USA" if state_list else "USA"
-            meta_dict["Description"] = (
-               f"The Flood Inundation Map (FIM) was generated using USGS High Water Marks acquired "
-                f"for the {start_date}-{end_date} flood with a spatial resolution of {res_txt}. "
-                f"The corresponding HUC IDs are {huc8_list}"
-            )
+                    # Update the metadata dictionary with the actual HUC results
+                    meta_dict["HUC8"] = huc8_list
+                    meta_dict["River Basin Name"] = name_list
+                    meta_dict["State"] = f"{state_list}, USA" if state_list else "USA"
+                    meta_dict["Description"] = (
+                       f"The Flood Inundation Map (FIM) was generated using USGS High Water Marks acquired "
+                        f"for the {start_date}-{end_date} flood with a spatial resolution of {res_txt}. "
+                        f"The corresponding HUC IDs are {huc8_list}"
+                    )
 
-            # File management
-            folder_name = f"{self.SENSOR_CODE}_{start_date}_{end_date}_{dms_code}"
-            destination_folder = BASE_DEST / folder_name
-            destination_folder.mkdir(parents=True, exist_ok=True)
+                    # File management
+                    folder_name = f"{self.SENSOR_CODE}_{start_date}_{end_date}_{dms_code}"
+                    destination_folder = BASE_DEST / folder_name
+                    destination_folder.mkdir(parents=True, exist_ok=True)
 
-            new_filename = f"{self.SENSOR_CODE}_{res_str}_{start_date}_{end_date}_{dms_code}_BM.tif"
-            new_path = destination_folder / new_filename
+                    new_filename = f"{self.SENSOR_CODE}_{res_str}_{start_date}_{end_date}_{dms_code}_BM.tif"
+                    new_path = destination_folder / new_filename
 
-            shutil.copy2(out_4326, new_path)
-            self.log(f"Saved GeoTIFF: {new_path.name}")
+                    shutil.copy2(out_4326, new_path)
+                    self.log(f"Saved GeoTIFF: {new_path.name}")
 
-            # Save JSON
-            metadata_filename = new_path.name.replace("BM.tif", "metadata.json")
-            metadata_path = new_path.parent / metadata_filename
-            with open(metadata_path, "w") as jf:
-                json.dump(meta_dict, jf, indent=4)
-            self.log(f"Wrote metadata: {metadata_path.name}")
+                    # Save JSON
+                    metadata_filename = new_path.name.replace("BM.tif", "metadata.json")
+                    metadata_path = new_path.parent / metadata_filename
+                    with open(metadata_path, "w") as jf:
+                        json.dump(meta_dict, jf, indent=4)
+                    self.log(f"Wrote metadata: {metadata_path.name}")
 
-            # AOI.gpkg
-            gpkg_path = new_path.parent / new_path.name.replace("BM.tif", "AOI.gpkg")
-            self.raster_data_bbox(out_4326, gpkg_path, meta_dict, nodata=self.NODATA_VAL)
-            self.log(f"Wrote AOI: {gpkg_path.name}")
+                    # AOI.gpkg
+                    gpkg_path = new_path.parent / new_path.name.replace("BM.tif", "AOI.gpkg")
+                    self.raster_data_bbox(out_4326, gpkg_path, meta_dict, nodata=self.NODATA_VAL)
+                    self.log(f"Wrote AOI: {gpkg_path.name}")
 
-        except Exception as e:
-            self.log(f"Error processing {tif.name}: {e}")
-            import traceback
-            traceback.print_exc()
+                except Exception as e:
+                    self.log(f"Error processing {tif.name}: {e}")
+                    import traceback
+                    traceback.print_exc()
 
-        self.log("Done.")
+            self.log("Done.")
+        finally:
+            # Remove the intermediate work dir so the input folder stays clean
+            # (best-effort; ignore if it cannot be removed).
+            shutil.rmtree(self._work_dir, ignore_errors=True)
+            self._work_dir = None
 
 
-def process(input_tif, base_dest, start_date, end_date, **overrides):
+def process(input_path, base_dest, start_date, end_date, intermediate_folder=None, **overrides):
     """
-    Convenience wrapper: run HwmProcessor on a single raster.
-    Pass config overrides (e.g. source=..., simplify_tol=...) as keyword args.
+    Convenience wrapper: run HwmProcessor over a folder or a single .tif.
+
+    start_date / end_date: the flood window (e.g. "160928" / "161009").
+    intermediate_folder: temp raster dir (defaults to a temp dir, removed after).
+    Config overrides (e.g. source=...) are passed to the processor.
     """
-    HwmProcessor(**overrides).process(input_tif, base_dest, start_date, end_date)
+    HwmProcessor(**overrides).process(
+        input_path, base_dest, start_date, end_date, intermediate_folder=intermediate_folder
+    )
