@@ -1,6 +1,6 @@
 # Architecture
 
-`fimbench` is a `src/`-layout Python package, organised into four groups that
+`fimbench` is a `src/`-layout Python library, organised into four groups that
 follow the FIM data lifecycle. Content is **created** in one group and **pushed
 out** by another; the S3 access layer lives with the push side.
 

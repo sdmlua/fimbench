@@ -12,16 +12,17 @@
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 
-# core package
-pip install -e .
+# complete install: all modules + every dependency (arcgis, mbutil included)
+pip install fimbench
 
-# with development tools
+# with development tools (test / lint)
 pip install -e ".[dev]"
-
-# optional capabilities
-pip install -e ".[tiling]"         # vector-tile generation
-pip install -e ".[publish]"        # ArcGIS Online publishing
 ```
+
+`pip install fimbench` is already complete — ArcGIS Online publishing and vector
+tiling work out of the box. Tiling additionally needs the `tippecanoe` binary on
+your `PATH` (`brew install tippecanoe`), which is a system tool rather than a
+Python package.
 
 ## Importing
 

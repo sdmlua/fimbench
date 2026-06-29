@@ -1,46 +1,61 @@
-Attribution 4.0 International (CC BY 4.0)
+FIMbench License
+-----
 
-Copyright (c) 2026 Surface Dynamics Modeling Lab (SDML),
-University of Alabama.
+Copyright (c) 2026 Surface Dynamics Modeling Lab (SDML), University of Alabama.
+
+This project is distributed under two licenses, according to the type of
+material. The software and source code are licensed under the Creative Commons
+Attribution 4.0 International License (CC BY 4.0). The FIMbench dataset is
+licensed under the Creative Commons Attribution-NonCommercial 4.0 International
+License (CC BY-NC 4.0).
+
+"Software and source code" refers to the FIMbench Python package and the
+accompanying scripts in this repository. "FIMbench dataset" refers to the
+benchmark Flood Inundation Maps (FIMs) and their derived extents, catalog, and
+metadata distributed through the FIMbench database, regardless of where they are
+hosted.
+
+
+Software and source code
+------------
 
 This work is licensed under the Creative Commons Attribution 4.0 International
 License. To view a copy of this license, visit
-https://creativecommons.org/licenses/by/4.0/
-or send a letter to Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
+https://creativecommons.org/licenses/by/4.0/.
 
-----------------------------------------------------------------------------
+You are free to share and adapt the material for any purpose, including
+commercially, provided that you give appropriate credit, provide a link to the
+license, and indicate if changes were made. You may not apply legal terms or
+technological measures that legally restrict others from doing anything the
+license permits.
 
-You are free to:
 
-  - Share — copy and redistribute the material in any medium or format.
-  - Adapt — remix, transform, and build upon the material for any purpose,
-    even commercially.
+FIMbench dataset
+-------
 
-The licensor cannot revoke these freedoms as long as you follow the license
-terms.
+This work is licensed under the Creative Commons Attribution-NonCommercial 4.0
+International License. To view a copy of this license, visit
+https://creativecommons.org/licenses/by-nc/4.0/.
 
-Under the following terms:
+You are free to share and adapt the material, provided that you give appropriate
+credit, provide a link to the license, and indicate if changes were made, and
+that you do not use the material for commercial purposes. You may not apply legal
+terms or technological measures that legally restrict others from doing anything
+the license permits.
 
-  - Attribution — You must give appropriate credit, provide a link to the
-    license, and indicate if changes were made. You may do so in any
-    reasonable manner, but not in any way that suggests the licensor endorses
-    you or your use.
 
-  - No additional restrictions — You may not apply legal terms or
-    technological measures that legally restrict others from doing anything the
-    license permits.
+Disclaimer
+-----
 
-Notices:
+The material is provided "as is", without warranties of any kind. The licenses
+may not give you all of the permissions necessary for your intended use, as
+other rights such as publicity, privacy, or moral rights may limit how you use
+the material.
 
-  You do not have to comply with the license for elements of the material in
-  the public domain or where your use is permitted by an applicable exception
-  or limitation.
 
-  No warranties are given. The license may not give you all of the permissions
-  necessary for your intended use. For example, other rights such as
-  publicity, privacy, or moral rights may limit how you use the material.
+Acknowledgment
+-------
 
-----------------------------------------------------------------------------
-
-The full legal code of CC BY 4.0 is available at:
-https://creativecommons.org/licenses/by/4.0/legalcode
+This research was supported by the Cooperative Institute for Research to
+Operations in Hydrology (CIROH) with funding under award NA22NWS4320003 from the
+NOAA Cooperative Institute Program.

@@ -94,8 +94,10 @@ Open an issue describing:
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the
-project's [CC BY 4.0](LICENSE) license.
+This project is dual-licensed (see [LICENSE](LICENSE)): the software / source
+code under **CC BY 4.0**, and the FIMbench dataset under **CC BY-NC 4.0**
+(non-commercial). By contributing code, you agree that your contributions will
+be licensed under the project's CC BY 4.0 license.
 
 ## Questions
 
