@@ -1,0 +1,19 @@
+"""
+Object-level S3 helpers for the FIM database.
+
+Thin wrappers over the client from :mod:`fimbench.publish.s3.s3_client`:
+listing, existence checks, get/put, multipart upload/download and presigned
+URL generation. Higher-level packages should call these rather than boto3
+directly.
+
+To be populated.
+"""
+
+from __future__ import annotations
+
+# def list_objects(bucket, prefix): ...
+# def object_exists(bucket, key): ...
+# def upload_file(local_path, bucket, key, extra_args=None): ...
+# def download_file(bucket, key, local_path): ...
+# def presigned_url(bucket, key, expires=3600): ...
+# def http_url(bucket, key): ...

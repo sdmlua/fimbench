@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+build/
+dist/
+.eggs/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# Environments / secrets
+.env
+.env.*
+
+# OS
+.DS_Store
+
+# Data / generated artifacts (FIM tiles, catalogs, geopackages)
+*.mbtiles
+out_tiles/
+*.gpkg
+catalog_core.json
+FIM_extents.geojson
+
+# Streamlit
+.streamlit/secrets.toml

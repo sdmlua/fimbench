@@ -1,0 +1,61 @@
+FIMbench License
+-----
+
+Copyright (c) 2026 Surface Dynamics Modeling Lab (SDML), University of Alabama.
+
+This project is distributed under two licenses, according to the type of
+material. The software and source code are licensed under the Creative Commons
+Attribution 4.0 International License (CC BY 4.0). The FIMbench dataset is
+licensed under the Creative Commons Attribution-NonCommercial 4.0 International
+License (CC BY-NC 4.0).
+
+"Software and source code" refers to the FIMbench Python package and the
+accompanying scripts in this repository. "FIMbench dataset" refers to the
+benchmark Flood Inundation Maps (FIMs) and their derived extents, catalog, and
+metadata distributed through the FIMbench database, regardless of where they are
+hosted.
+
+
+Software and source code
+------------
+
+This work is licensed under the Creative Commons Attribution 4.0 International
+License. To view a copy of this license, visit
+https://creativecommons.org/licenses/by/4.0/.
+
+You are free to share and adapt the material for any purpose, including
+commercially, provided that you give appropriate credit, provide a link to the
+license, and indicate if changes were made. You may not apply legal terms or
+technological measures that legally restrict others from doing anything the
+license permits.
+
+
+FIMbench dataset
+-------
+
+This work is licensed under the Creative Commons Attribution-NonCommercial 4.0
+International License. To view a copy of this license, visit
+https://creativecommons.org/licenses/by-nc/4.0/.
+
+You are free to share and adapt the material, provided that you give appropriate
+credit, provide a link to the license, and indicate if changes were made, and
+that you do not use the material for commercial purposes. You may not apply legal
+terms or technological measures that legally restrict others from doing anything
+the license permits.
+
+
+Disclaimer
+-----
+
+The material is provided "as is", without warranties of any kind. The licenses
+may not give you all of the permissions necessary for your intended use, as
+other rights such as publicity, privacy, or moral rights may limit how you use
+the material.
+
+
+Acknowledgment
+-------
+
+This research was supported by the Cooperative Institute for Research to
+Operations in Hydrology (CIROH) with funding under award NA22NWS4320003 from the
+NOAA Cooperative Institute Program.

@@ -1,0 +1,84 @@
+[project]
+name = "fimbench"
+version = "0.1.0"
+description = "Flood inundation map (FIM) benchmarking utilities: preprocessing the floodmap to a standardized format before uploading to the FIMbench database, S3 database interaction, and querying for FIMbench."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+
+authors = [
+  { name = "Surface Dynamics Modeling Lab (SDML), The University of Alabama" },
+  { name = "Supath Dhital", email = "sdhital@ua.edu" },
+]
+maintainers = [
+  { name = "Surface Dynamics Modeling Lab (SDML), The University of Alabama" },
+  { name = "Supath Dhital", email = "sdhital@ua.edu" },
+]
+
+keywords = ["flood", "FIM", "benchmark", "geospatial", "s3", "geopackage"]
+
+# A plain `pip install fimbench` installs ALL four modules and EVERYTHING they
+# need, including the heavier integrations (arcgis for ArcGIS Online, mbutil for
+# vector tiling). Nothing else is required for full functionality.
+# Note: vector tiling also needs the `tippecanoe` binary on PATH (not a Python
+# package): `brew install tippecanoe`.
+dependencies = [
+  "boto3>=1.40",
+  "botocore>=1.40",
+  "geopandas>=1.1",
+  "pandas>=2.2",
+  "numpy>=1.24",
+  "shapely>=2.0",
+  "rasterio>=1.3",
+  "requests>=2.31",
+  "mbutil>=0.3",
+  "arcgis>=2.4",
+]
+
+# The base install above is already complete. These per-module names remain
+# valid install targets for users who write `pip install "fimbench[publish]"`,
+# but they resolve to the base (extras can only add to it, never subtract), so
+# every one of them installs the same complete package.
+[project.optional-dependencies]
+processing_floodmap = []
+webcontent_utils = []
+query = []
+publish = []
+tiling = []
+all = []
+
+dev = [
+  "pytest>=8.0",
+  "black>=24.0",
+  "ruff>=0.6",
+]
+
+[project.urls]
+Homepage = "https://github.com/sdmlua/fimbench"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# Ship non-Python files needed at runtime / for reference: per-module READMEs
+# and the local tile viewer's HTML page.
+[tool.setuptools.package-data]
+"*" = ["*.md"]
+"fimbench.webcontent_utils.viewtile_locally" = ["*.html"]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
