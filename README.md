@@ -57,7 +57,7 @@ the FIM data lifecycle- content is **created** in one group and **pushed out** b
 another, with a single shared S3 access layer.
 
 <div align="center">
-  <img src="assets/fimbench-arct.png" alt="FIMbench architecture" width="90%" />
+  <img src="assets/FIMbench_arct.jpg" alt="FIMbench architecture" width="90%" />
 </div>
 
 The codebase is as follows:
