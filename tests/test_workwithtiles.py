@@ -16,9 +16,9 @@ import fimbench
 out_dir = Path("./out")
 source_path = out_dir / "FIM_extents.geojson"
 catalog_path = out_dir / "catalog_core.json"
-aws_access_key_id = None          # None -> use the device's configured credentials
+aws_access_key_id = None  # None -> use the device's configured credentials
 aws_secret_access_key = None
-region = None                     # e.g. "us-east-1"
+region = None  # e.g. "us-east-1"
 
 
 def test_work_with_tiles():

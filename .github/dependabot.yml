@@ -1,0 +1,27 @@
+version: 2
+updates:
+  # Python dependencies. FIMbench is uv-managed (pyproject.toml + uv.lock), so
+  # the "uv" ecosystem is used instead of "pip": it bumps the constraints in
+  # pyproject.toml AND refreshes uv.lock in the same PR.
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      all-deps:            # creating PRs for all dependencies
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+
+  # Keep GitHub Actions versions current too
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      actions:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"

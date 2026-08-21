@@ -130,7 +130,7 @@ class CatalogandTileManager:
                 files.append(Path(root) / fname)
         return files
 
-    #Parallel upload of tiles for faster upload
+    # Parallel upload of tiles for faster upload
     def _upload_tiles_parallel(self, max_workers: Optional[int] = None):
         if not self.s3_client:
             self._warn("S3 bucket not configured. Skipping upload.")
@@ -499,9 +499,7 @@ class CatalogandTileManager:
             if catalog_path and catalog_path.exists():
                 self._upload_file(catalog_path, "catalog_core.json", "application/json")
             if self.tmp_geojson.exists():
-                self._upload_file(
-                    self.tmp_geojson, "FIM_extents.geojson", "application/geo+json"
-                )
+                self._upload_file(self.tmp_geojson, "FIM_extents.geojson", "application/geo+json")
 
     def _upload_file(self, path: Path, key_suffix: str, content_type: str):
         key = f"{self.s3_prefix}/{key_suffix}"
@@ -557,9 +555,7 @@ class CatalogandTileManager:
             if run_tiling and source_path:
                 source = Path(source_path)
                 self.prepare_data(
-                    parquet_path=(
-                        source if source.suffix.lower() == ".parquet" else None
-                    ),
+                    parquet_path=(source if source.suffix.lower() == ".parquet" else None),
                     geojson_in=source if source.suffix.lower() == ".geojson" else None,
                     catalog_path=Path(catalog_path) if catalog_path else None,
                     include_fields=include_fields,

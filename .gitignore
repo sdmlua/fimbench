@@ -4,8 +4,10 @@ __pycache__/
 *.egg-info/
 *.egg
 build/
-dist/
 .eggs/
+# dist/ is deliberately NOT ignored: `make build` keeps it down to the
+# current version's wheel + sdist, and they should show up in `git status`
+# so a release is never uploaded from stale artifacts. They stay untracked.
 
 # Virtual envs
 .venv/

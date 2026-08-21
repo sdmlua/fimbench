@@ -127,9 +127,7 @@ def _vector_aoi_polygon_wgs84(path: str) -> Polygon:
     if gdf.empty:
         raise ValueError(f"Vector file {path} contains no features.")
     if gdf.crs is None:
-        raise ValueError(
-            f"Vector file {path} has no CRS; cannot derive WGS84 geometry."
-        )
+        raise ValueError(f"Vector file {path} has no CRS; cannot derive WGS84 geometry.")
     gdf = gdf.to_crs("EPSG:4326")
     geom = unary_union(gdf.geometry)
     if geom.is_empty:
@@ -256,9 +254,7 @@ def _filter_by_tier(
     if not tier:
         return records
     target_t = _normalize_tier_for_comparison(tier)
-    return [
-        r for r in records if _normalize_tier_for_comparison(_tier_label(r)) == target_t
-    ]
+    return [r for r in records if _normalize_tier_for_comparison(_tier_label(r)) == target_t]
 
 
 def _pick_area_crs_for_bounds(bounds: Tuple[float, float, float, float]) -> str:
@@ -284,9 +280,7 @@ def _compute_area_overlap_stats(
     area_crs = _pick_area_crs_for_bounds(union_geom.bounds)
 
     aoi_gdf = gpd.GeoDataFrame(geometry=[aoi_geom], crs="EPSG:4326").to_crs(area_crs)
-    bench_gdf = gpd.GeoDataFrame(geometry=[benchmark_geom], crs="EPSG:4326").to_crs(
-        area_crs
-    )
+    bench_gdf = gpd.GeoDataFrame(geometry=[benchmark_geom], crs="EPSG:4326").to_crs(area_crs)
 
     aoi_proj = aoi_gdf.geometry.iloc[0]
     bench_proj = bench_gdf.geometry.iloc[0]
@@ -373,9 +367,7 @@ def _format_block_with_overlap(
     )
 
     if pct is not None and km2 is not None:
-        lines.append(
-            f"Overlap with respect to benchmark FIM: {pct:.1f}% / {km2:.2f} km²"
-        )
+        lines.append(f"Overlap with respect to benchmark FIM: {pct:.1f}% / {km2:.2f} km²")
 
     return "\n".join(lines)
 
@@ -394,9 +386,7 @@ def _format_records_with_summary(
 
     tier_sum = _tier_summary(records)
     summary_line = f"Total benchmark FIMs found: {len(records)}  ({tier_sum})"
-    header = (
-        f"Following are the available benchmark data for {context}:\n{summary_line}\n"
-    )
+    header = f"Following are the available benchmark data for {context}:\n{summary_line}\n"
 
     blocks: List[str] = []
     for i, rec in enumerate(records):
@@ -616,11 +606,7 @@ class benchFIMquery:
             aoi_geom = _raster_aoi_polygon_wgs84(raster_path)
         if boundary_path:
             boundary_geom = _vector_aoi_polygon_wgs84(boundary_path)
-            aoi_geom = (
-                boundary_geom
-                if aoi_geom is None
-                else aoi_geom.intersection(boundary_geom)
-            )
+            aoi_geom = boundary_geom if aoi_geom is None else aoi_geom.intersection(boundary_geom)
 
         file_names = _normalize_file_name_input(file_name)
 
@@ -646,14 +632,10 @@ class benchFIMquery:
                     ]
                     if not candidates:
                         candidates = [
-                            r
-                            for r in recs
-                            if str(r.get("file_name", "")).strip() == fname
+                            r for r in recs if str(r.get("file_name", "")).strip() == fname
                         ]
                 else:
-                    candidates = [
-                        r for r in recs if str(r.get("file_name", "")).strip() == fname
-                    ]
+                    candidates = [r for r in recs if str(r.get("file_name", "")).strip() == fname]
 
                 if not candidates:
                     not_found.append(fname)
@@ -725,11 +707,7 @@ class benchFIMquery:
         # Filename filter for general workflows, including AOI/date queries.
         if file_names:
             target_names = {name.strip() for name in file_names if name.strip()}
-            records = [
-                r
-                for r in records
-                if str(r.get("file_name", "")).strip() in target_names
-            ]
+            records = [r for r in records if str(r.get("file_name", "")).strip() in target_names]
 
         if not records:
             return PrettyDict(

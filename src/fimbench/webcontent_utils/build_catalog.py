@@ -93,9 +93,9 @@ class FIMCatalogBuilder:
         out: List[str] = []
         for v in items:
             if isinstance(v, dict):
-                out.append(json.dumps(v, ensure_ascii=False)[:self.max_str_len])
+                out.append(json.dumps(v, ensure_ascii=False)[: self.max_str_len])
             else:
-                out.append(str(v)[:self.max_str_len])
+                out.append(str(v)[: self.max_str_len])
         return out
 
     def _load_with_context(self, raw: str, where: str) -> dict:
@@ -115,7 +115,7 @@ class FIMCatalogBuilder:
         for n in names:
             if n in d and d[n] is not None:
                 v = d[n]
-                return v if not isinstance(v, str) else v[:self.max_str_len]
+                return v if not isinstance(v, str) else v[: self.max_str_len]
         return None
 
     def _extract_ymd_iso(self, text: Any) -> Optional[str]:
@@ -129,7 +129,7 @@ class FIMCatalogBuilder:
             return dt.datetime.strptime(m.group(1), "%Y%m%d").date().isoformat()
         except:
             return None
-        
+
     def _extract_event_ts(self, text: Any) -> Optional[str]:
         if text is None:
             return None
@@ -188,13 +188,12 @@ class FIMCatalogBuilder:
         except:
             return None
 
-    # Normalization 
+    # Normalization
     def normalize_record(self, meta_key: str, meta: Dict[str, Any]) -> Dict[str, Any]:
         parts = meta_key.split("/")
 
         tier_str = next(
-            (p for p in parts if p.lower().startswith("tier") or p.lower() == "hwm"),
-            "Unknown_Tier"
+            (p for p in parts if p.lower().startswith("tier") or p.lower() == "hwm"), "Unknown_Tier"
         )
         if tier_str.lower() == "hwm":
             tier = "HWM"
@@ -206,7 +205,9 @@ class FIMCatalogBuilder:
         folder = "/".join(parts[:-1])
 
         file_name = self._safe_get(meta, "File_Name", "File Name", "File name")
-        tif_url = f"https://{self.bucket}.s3.amazonaws.com/{folder}/{file_name}" if file_name else None
+        tif_url = (
+            f"https://{self.bucket}.s3.amazonaws.com/{folder}/{file_name}" if file_name else None
+        )
 
         base_no_ext, _ = os.path.splitext(file_name or "")
         base_aoi = (
@@ -214,7 +215,11 @@ class FIMCatalogBuilder:
             if self._GPKG_SUFFIX_RE.search(base_no_ext)
             else f"{base_no_ext}_AOI"
         )
-        gpkg_url = f"https://{self.bucket}.s3.amazonaws.com/{folder}/{base_aoi}.gpkg" if file_name else None
+        gpkg_url = (
+            f"https://{self.bucket}.s3.amazonaws.com/{folder}/{base_aoi}.gpkg"
+            if file_name
+            else None
+        )
 
         # Dates different for different tiers
         start_date_ymd = None
@@ -224,12 +229,8 @@ class FIMCatalogBuilder:
         return_period = None
 
         if tier == "HWM":
-            start_date_ymd = self._extract_ymd_iso(
-                self._safe_get(meta, "Start Date of the Flood")
-            )
-            end_date_ymd = self._extract_ymd_iso(
-                self._safe_get(meta, "End Date of the Flood")
-            )
+            start_date_ymd = self._extract_ymd_iso(self._safe_get(meta, "Start Date of the Flood"))
+            end_date_ymd = self._extract_ymd_iso(self._safe_get(meta, "End Date of the Flood"))
             # event_ts anchored to start date for sorting
             if start_date_ymd:
                 event_ts = int(start_date_ymd.replace("-", ""))
@@ -256,38 +257,36 @@ class FIMCatalogBuilder:
         lon, lat = self._centroid_from_meta(meta)
 
         core = {
-                "id": f"{tier}/{site}/{os.path.splitext(os.path.basename(file_name or meta_key))[0]}",
-                "site_id": site,
-                "tier": tier,
-                "date_ymd": date_ymd,                    # Tier 1/2/3 flood date
-                "start_date_ymd": start_date_ymd,        # HWM only
-                "end_date_ymd": end_date_ymd,            # HWM only
-                "return_period": return_period,           # Tier 4 only
-                **({"event_ts": event_ts} if tier in {"Tier_1", "Tier_2", "Tier_3"} else {}),
-                "json_url": f"https://{self.bucket}.s3.amazonaws.com/{meta_key}",
-                "s3_prefix": folder,
-                "tif_url": tif_url,
-                "gpkg_url": gpkg_url,
-                "centroid": [lon, lat],
-                "bbox": self._bbox_from_extent(meta),
-                "resolution_m": self._safe_get(meta, "Resolution in meter", "Resolution (m)"),
-                "state": self._safe_get(meta, "State"),
-                "basin": self._safe_get(meta, "River Basin Name"),
-                "source": self._safe_get(meta, "Source"),
-                "access_rights": self._safe_get(meta, "Access_Rights"),
-                "file_name": file_name,
-                "s3_key": meta_key,
-                "quality": self._safe_get(meta, "Quality") or tier,
-                "description": self._safe_get(meta, "Description"),
-                "references": meta.get("References"),
-            }
+            "id": f"{tier}/{site}/{os.path.splitext(os.path.basename(file_name or meta_key))[0]}",
+            "site_id": site,
+            "tier": tier,
+            "date_ymd": date_ymd,  # Tier 1/2/3 flood date
+            "start_date_ymd": start_date_ymd,  # HWM only
+            "end_date_ymd": end_date_ymd,  # HWM only
+            "return_period": return_period,  # Tier 4 only
+            **({"event_ts": event_ts} if tier in {"Tier_1", "Tier_2", "Tier_3"} else {}),
+            "json_url": f"https://{self.bucket}.s3.amazonaws.com/{meta_key}",
+            "s3_prefix": folder,
+            "tif_url": tif_url,
+            "gpkg_url": gpkg_url,
+            "centroid": [lon, lat],
+            "bbox": self._bbox_from_extent(meta),
+            "resolution_m": self._safe_get(meta, "Resolution in meter", "Resolution (m)"),
+            "state": self._safe_get(meta, "State"),
+            "basin": self._safe_get(meta, "River Basin Name"),
+            "source": self._safe_get(meta, "Source"),
+            "access_rights": self._safe_get(meta, "Access_Rights"),
+            "file_name": file_name,
+            "s3_key": meta_key,
+            "quality": self._safe_get(meta, "Quality") or tier,
+            "description": self._safe_get(meta, "Description"),
+            "references": meta.get("References"),
+        }
 
         for k in ("HUC2", "HUC4", "HUC6", "HUC8", "HUC10", "HUC12"):
             if k in meta:
                 core[k.lower()] = (
-                    [str(v) for v in meta[k]]
-                    if isinstance(meta[k], list)
-                    else str(meta[k])
+                    [str(v) for v in meta[k]] if isinstance(meta[k], list) else str(meta[k])
                 )
 
         return core
@@ -309,7 +308,11 @@ class FIMCatalogBuilder:
 
         for i, key in enumerate(meta_keys, 1):
             file_name_only = os.path.basename(key)
-            print(f"[{i}/{total_files}] Working on: {file_name_only}                    ", end="\r", flush=True)
+            print(
+                f"[{i}/{total_files}] Working on: {file_name_only}                    ",
+                end="\r",
+                flush=True,
+            )
 
             try:
                 raw = (

@@ -14,20 +14,20 @@ Run with pytest; comment out any test function you do not want to run.
 
 import fimbench
 
-input_folder = "/Users/Supath/Downloads/SDML/FIMeval/Final/Test cases/Planet"
-input_tif = "/Users/Supath/Downloads/SDML/FIMeval/Final/Test cases/Aerial/Binary_20160103_BM.tif"
-out_dir = "/Users/Supath/Downloads/SDML/FIMeval/Final/test-out"
+input_folder = "path/to/the/folder"
+input_tif = "path/to/input/tif"
+out_dir = "/Users/Supath/Downloads/Data/out"
 event = "100"
-start_date = "160928"
-end_date = "161009"
+start_date = "10160928"
+end_date = "20161009"
 flood_date = "20160928"
-intermediate_folder = None        # None -> a temp dir is used and removed afterward
+intermediate_folder = None  # None -> a temp dir is used and removed afterward
 
 # Config overrides. None -> keep the module default.
-source = None                     # e.g. "Dr. X, ..." Creator name and email
-nodata_val = None                 # default -9999
-block_size = None                 # default 512 (GeoTIFF tile size)
-simplify_tol = None               # default 0.0001 deg (~11 m) geometry simplify tolerance
+source = "Supath Dhital"  # e.g. "Dr. X, ..." Creator name and email
+nodata_val = None  # default -9999
+block_size = None  # default 512 (GeoTIFF tile size)
+simplify_tol = None  # default 0.0001 deg (~11 m) geometry simplify tolerance
 
 # def test_processing_tier1_folder():
 #     # Folder: flood_date inferred per file
@@ -36,17 +36,17 @@ simplify_tol = None               # default 0.0001 deg (~11 m) geometry simplify
 #     )
 
 
-# def test_processing_tier1_single():
-#     # Single raster: pass the flood_date; override source if you want
-#     fimbench.Tier1Processor(source=source, nodata_val=nodata_val, block_size=block_size, simplify_tol=simplify_tol).process(
-#         input_tif, out_dir, flood_date=flood_date, intermediate_folder=intermediate_folder
+def test_processing_tier1_single():
+    # Single raster: pass the flood_date; override source if you want
+    fimbench.Tier1Processor(
+        source=source, nodata_val=nodata_val, block_size=block_size, simplify_tol=simplify_tol
+    ).process(input_tif, out_dir, flood_date=flood_date, intermediate_folder=intermediate_folder)
+
+
+# def test_processing_tier2_folder():
+#     fimbench.Tier2Processor(source=source, nodata_val=nodata_val, block_size=block_size, simplify_tol=simplify_tol).process(
+#         input_folder, out_dir, intermediate_folder=intermediate_folder
 #     )
-
-
-def test_processing_tier2_folder():
-    fimbench.Tier2Processor(source=source, nodata_val=nodata_val, block_size=block_size, simplify_tol=simplify_tol).process(
-        input_folder, out_dir, intermediate_folder=intermediate_folder
-    )
 
 
 # def test_processing_tier2_single():
@@ -61,16 +61,16 @@ def test_processing_tier2_folder():
 #     )
 
 
-# def test_processing_tier3_single():
-#     fimbench.Tier3Processor(source=source, nodata_val=nodata_val, block_size=block_size, simplify_tol=simplify_tol).process(
-#         input_tif, out_dir, flood_date=flood_date, intermediate_folder=intermediate_folder
-#     )
+def test_processing_tier3_single():
+    fimbench.Tier3Processor(
+        source=source, nodata_val=nodata_val, block_size=block_size, simplify_tol=simplify_tol
+    ).process(input_tif, out_dir, flood_date=flood_date, intermediate_folder=intermediate_folder)
 
 
-# def test_processing_fema_ble():
-#     fimbench.FemaBleProcessor(source=source, nodata_val=nodata_val, block_size=block_size, simplify_tol=simplify_tol).process(
-#         input_folder, out_dir, event, intermediate_folder=intermediate_folder
-#     )
+def test_processing_fema_ble():
+    fimbench.FemaBleProcessor(
+        source=source, nodata_val=nodata_val, block_size=block_size, simplify_tol=simplify_tol
+    ).process(input_folder, out_dir, event, intermediate_folder=intermediate_folder)
 
 
 # def test_processing_hwm():

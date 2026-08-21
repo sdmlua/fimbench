@@ -9,7 +9,7 @@ Workflow:
   - UPDATE: overwrite existing Hosted Feature Layer (by item id)
 Notes:
   - GeoJSON should be WGS84 (EPSG:4326).
-  - overwrite() works for Hosted Feature Layer COLLECTION items 
+  - overwrite() works for Hosted Feature Layer COLLECTION items
 """
 
 from __future__ import annotations
@@ -88,20 +88,20 @@ class PublishFIMExtent2ArcGISOnline:
         """
         if not folder_name:
             return None
-            
+
         user = gis.users.me
-        
+
         # Check if folder already exists
         existing_folders = user.folders
         for f in existing_folders:
-            if f['title'] == folder_name:
+            if f["title"] == folder_name:
                 return folder_name  # Folder exists
-        
+
         # Folder doesn't exist, create it
         result = gis.content.create_folder(folder_name)
         if result is None:
             raise RuntimeError(f"Failed to create folder: {folder_name}")
-        
+
         return folder_name
 
     def create_hosted_feature_layer_from_geojson(
@@ -117,7 +117,7 @@ class PublishFIMExtent2ArcGISOnline:
     ) -> PublishFIMExtent2ArcGISOnline:
         """
         Upload GeoJSON as an item, then publish it as a Hosted Feature Layer (new service).
-        
+
         Parameters:
         -----------
         gis : GIS
@@ -136,7 +136,7 @@ class PublishFIMExtent2ArcGISOnline:
             Full description of the item.
         folder : Optional[str]
             Folder name in ArcGIS Online to store the item. Created if doesn't exist.
-            
+
         Returns:
         --------
         PublishFIMExtent2ArcGISOnline
@@ -154,7 +154,7 @@ class PublishFIMExtent2ArcGISOnline:
         # 'snippet' is the ArcGIS API field name for summary
         item_props = {
             "title": title,
-            "type": "GeoJson",  
+            "type": "GeoJson",
             "tags": tags,
             "snippet": summary,  # Summary/snippet field in ArcGIS
             "description": description,
@@ -198,7 +198,7 @@ class PublishFIMExtent2ArcGISOnline:
         """
         Overwrite an existing Hosted Feature Layer (keeps same item id and service url).
         published_item_id must be the *Hosted Feature Layer item id* (not the original GeoJSON item).
-        
+
         Parameters:
         -----------
         gis : GIS
@@ -209,7 +209,7 @@ class PublishFIMExtent2ArcGISOnline:
             Path to the new GeoJSON file.
         summary : Optional[str]
             Updated summary/snippet for the item. If provided, updates the item metadata.
-            
+
         Returns:
         --------
         PublishFIMExtent2ArcGISOnline
@@ -281,7 +281,7 @@ class PublishFIMExtent2ArcGISOnline:
             Folder name in ArcGIS Online. Defaults to the FIMbench folder if None.
 
         All metadata fields default to FIMbench values; pass your own to override.
-            
+
         Returns:
         --------
         PublishFIMExtent2ArcGISOnline
@@ -307,10 +307,10 @@ class PublishFIMExtent2ArcGISOnline:
                 geojson_path=geojson_path,
                 summary=summary,
             )
-        
+
         if not title:
             raise ValueError("title is required to create a new hosted feature layer.")
-            
+
         return self.create_hosted_feature_layer_from_geojson(
             gis=gis,
             geojson_path=geojson_path,

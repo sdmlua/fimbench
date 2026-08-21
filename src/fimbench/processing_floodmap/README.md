@@ -6,7 +6,15 @@ folder under the destination. Logic is kept faithful to the source notebooks,
 so the output matches.
 
 Intersected HUC8 watersheds informations for metadata within US are resolved on the fly from the ArcGIS REST service
-(`utils.get_intersected_huc8`)
+(`utils.get_intersected_huc8`). Only the flood extent's bounding box is sent to
+the service and the exact intersection is done locally, so maps of any size or
+polygon complexity are handled.
+
+`FemaBleProcessor` is the exception: BLE maps are produced per watershed, so
+`utils.get_dominant_huc8` keeps the single HUC8 holding at least 70 percent
+(`utils.DOMINANT_HUC8_FRACTION`) of the flood area rather than every HUC8 the
+extent touches. If no HUC8 reaches that share, the largest one is used and the
+shares are logged.
 
 ## Classes
 

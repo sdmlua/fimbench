@@ -28,15 +28,14 @@ DEFAULT_PREFIX = "FIM_Database/"
 def _prompt_for_credentials(region: Optional[str]):
     """Interactively ask the user for AWS keys (used as a last resort)."""
     print(
-        "No AWS credentials found on this device. Enter them below "
-        "(leave blank to abort).",
+        "No AWS credentials found on this device. Enter them below " "(leave blank to abort).",
         file=sys.stderr,
     )
     aws_access_key_id = input("AWS Access Key ID: ").strip()
     aws_secret_access_key = getpass.getpass("AWS Secret Access Key: ").strip()
     if not aws_access_key_id or not aws_secret_access_key:
         raise RuntimeError("AWS credentials are required to continue.")
-    region = (input(f"AWS region [{region or 'default'}]: ").strip() or region)
+    region = input(f"AWS region [{region or 'default'}]: ").strip() or region
     return aws_access_key_id, aws_secret_access_key, region
 
 

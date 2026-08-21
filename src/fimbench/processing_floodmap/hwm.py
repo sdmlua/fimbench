@@ -29,16 +29,24 @@ from .utils import get_intersected_huc8, list_input_tifs
 class HwmProcessor:
     """Standardize a High Water Mark flood map for the FIM database."""
 
-    SENSOR_CODE = 'HWM'
-    Full_Form = 'High Water Mark'
+    SENSOR_CODE = "HWM"
+    Full_Form = "High Water Mark"
     SOURCE = "Dr. Dinuke Munasinghe,The University of Alabama, Email id: dsmunasinghe@ua.edu"
 
     NODATA_VAL = -9999
     BLOCK_SIZE = 512
     SIMPLIFY_TOL = 0.0001  # ~11 m at the equator
 
-    def __init__(self, *, sensor_code=None, full_form=None, source=None,
-                 nodata_val=None, block_size=None, simplify_tol=None):
+    def __init__(
+        self,
+        *,
+        sensor_code=None,
+        full_form=None,
+        source=None,
+        nodata_val=None,
+        block_size=None,
+        simplify_tol=None,
+    ):
         # Class attributes are the defaults.
         if sensor_code is not None:
             self.SENSOR_CODE = sensor_code
@@ -92,7 +100,7 @@ class HwmProcessor:
                 tiled=True,
                 blockxsize=block_size,
                 blockysize=block_size,
-                compress="lzw"
+                compress="lzw",
             )
 
             with rasterio.open(output_tif, "w", **profile) as dst:
@@ -112,16 +120,19 @@ class HwmProcessor:
 
         with rasterio.open(input_file) as src:
             transform, width, height = calculate_default_transform(
-                src.crs, f"EPSG:{target_epsg}", src.width, src.height, *src.bounds)
+                src.crs, f"EPSG:{target_epsg}", src.width, src.height, *src.bounds
+            )
 
             metadata = src.meta.copy()
-            metadata.update({
-                "crs": f"EPSG:{target_epsg}",
-                "transform": transform,
-                "width": width,
-                "height": height,
-                "compress": "lzw"
-            })
+            metadata.update(
+                {
+                    "crs": f"EPSG:{target_epsg}",
+                    "transform": transform,
+                    "width": width,
+                    "height": height,
+                    "compress": "lzw",
+                }
+            )
 
             with rasterio.open(output_file, "w", **metadata) as dst:
                 for i in range(1, src.count + 1):
@@ -132,7 +143,7 @@ class HwmProcessor:
                         src_crs=src.crs,
                         dst_transform=transform,
                         dst_crs=f"EPSG:{target_epsg}",
-                        resampling=Resampling.nearest
+                        resampling=Resampling.nearest,
                     )
         return output_file
 
@@ -151,18 +162,19 @@ class HwmProcessor:
 
             # Update the transform to reflect the new resolution
             new_transform = src.transform * src.transform.scale(
-                (src.width / new_width),
-                (src.height / new_height)
+                (src.width / new_width), (src.height / new_height)
             )
 
             metadata = src.meta.copy()
-            metadata.update({
-                "driver": "GTiff",
-                "height": new_height,
-                "width": new_width,
-                "transform": new_transform,
-                "compress": "lzw"
-            })
+            metadata.update(
+                {
+                    "driver": "GTiff",
+                    "height": new_height,
+                    "width": new_width,
+                    "transform": new_transform,
+                    "compress": "lzw",
+                }
+            )
 
             with rasterio.open(out_file, "w", **metadata) as dst:
                 for i in range(1, src.count + 1):
@@ -173,7 +185,7 @@ class HwmProcessor:
                         src_crs=src.crs,
                         dst_transform=new_transform,
                         dst_crs=src.crs,
-                        resampling=Resampling.bilinear  # bilinear for continuous data, nearest for discrete
+                        resampling=Resampling.bilinear,  # bilinear for continuous data, nearest for discrete
                     )
                 final_crs = dst.crs
         return out_file, final_crs
@@ -184,7 +196,7 @@ class HwmProcessor:
             res_x, res_y = src.res
             avg_res = (res_x + res_y) / 2.0
             rounded_res = round(avg_res, 1)
-            res_str = f"{str(rounded_res).replace('.', '_')}m"   # e.g., 10.0 -> "10_0m"
+            res_str = f"{str(rounded_res).replace('.', '_')}m"  # e.g., 10.0 -> "10_0m"
             res_txt = f"{rounded_res:.2f} m"
         return rounded_res, res_str, res_txt
 
@@ -201,11 +213,11 @@ class HwmProcessor:
 
     # Decimal degrees to DMS, e.g. 95 31'44" W and 31 04'36" N -> 953144W310436N
     def decimal_to_dms_str(self, dec, is_lat=True):
-        direction = ''
+        direction = ""
         if is_lat:
-            direction = 'N' if dec >= 0 else 'S'
+            direction = "N" if dec >= 0 else "S"
         else:
-            direction = 'E' if dec >= 0 else 'W'
+            direction = "E" if dec >= 0 else "W"
 
         dec = abs(dec)
         degrees = int(dec)
@@ -215,7 +227,20 @@ class HwmProcessor:
         return f"{degrees:02d}{minutes:02d}{seconds:02d}{direction}"
 
     def build_metadata_dict(
-        self, src_4326, src_5070, new_filename, res_m_float, res_txt, dms_code, x, y, state_list, huc8_list, name_list, start_date, end_date
+        self,
+        src_4326,
+        src_5070,
+        new_filename,
+        res_m_float,
+        res_txt,
+        dms_code,
+        x,
+        y,
+        state_list,
+        huc8_list,
+        name_list,
+        start_date,
+        end_date,
     ):
         with rasterio.open(src_4326) as src:
             meta = {
@@ -231,7 +256,7 @@ class HwmProcessor:
                     "xmin": src.bounds.left,
                     "ymin": src.bounds.bottom,
                     "xmax": src.bounds.right,
-                    "ymax": src.bounds.top
+                    "ymax": src.bounds.top,
                 },
                 "DMS_Code_centroid": dms_code,
                 "Projection": src.crs.to_string() if src.crs else "Unknown",
@@ -251,8 +276,8 @@ class HwmProcessor:
                     "1. Cohen, S., Baruah, A., Nikrou, P., Tian, D., & Liu, H. (2025). Toward robust evaluations of flood inundation predictions using remote sensing derived benchmark maps. Water Resources Research, 61(8), e2024WR039574.",
                     "2. Munasinghe, D., Cohen, S., Tian, D., Liu, H., Baruah, A., and Devi, D. (2025). A Database of Flood Maps using high-resolution Airborne Imagery and Machine Learning Models. In: CIROH Developers' Conference, May 28-30, 2025.",
                     "3. Devi, D., Dhital, S., Munasinghe, D., Cohen, S., Baruah, A., Chen, Y., ... & Pruitt, C. (2025). A Framework for the Evaluation of Flood Inundation Predictions Over Extensive Benchmark Databases.",
-                    "4. Tian.D, Liu.H,  Wang.L, Cohen.S, Thapa.P (2024).Enhancing satellite image-derived flood maps with hydrologically guided region growing method and high-resolution DEMs.Chapman Conference on Remote Sensing of the Water Cycle"
-                ]
+                    "4. Tian.D, Liu.H,  Wang.L, Cohen.S, Thapa.P (2024).Enhancing satellite image-derived flood maps with hydrologically guided region growing method and high-resolution DEMs.Chapman Conference on Remote Sensing of the Water Cycle",
+                ],
             }
 
         # Generate polygons from the 5070 (resampled) raster
@@ -262,10 +287,8 @@ class HwmProcessor:
             mask = arr > 0  # 1 is flood, 0 is dry
 
             results = (
-                {'properties': {'raster_val': v}, 'geometry': s}
-                for i, (s, v) in enumerate(
-                    shapes(arr, mask=mask, transform=src_geom.transform)
-                )
+                {"properties": {"raster_val": v}, "geometry": s}
+                for i, (s, v) in enumerate(shapes(arr, mask=mask, transform=src_geom.transform))
             )
 
         geoms = list(results)
@@ -278,14 +301,16 @@ class HwmProcessor:
         gdf1.set_crs(geom_crs, inplace=True)
 
         if self.SIMPLIFY_TOL:
-            gdf1['geometry'] = gdf1.simplify(self.SIMPLIFY_TOL, preserve_topology=True)
-            gdf1['geometry'] = gdf1.geometry.apply(make_valid)
+            gdf1["geometry"] = gdf1.simplify(self.SIMPLIFY_TOL, preserve_topology=True)
+            gdf1["geometry"] = gdf1.geometry.apply(make_valid)
 
         unified_geom = unary_union(gdf1.geometry)
 
         return meta, unified_geom
 
-    def raster_to_polygon(self, in_raster, gpkg_path, metadata_row, valid_classes=(0, 1), nodata=None, connectivity=8):
+    def raster_to_polygon(
+        self, in_raster, gpkg_path, metadata_row, valid_classes=(0, 1), nodata=None, connectivity=8
+    ):
         nodata = self.NODATA_VAL if nodata is None else nodata
         in_raster = Path(in_raster)
         with rasterio.open(in_raster) as src:
@@ -378,11 +403,24 @@ class HwmProcessor:
                     dms_code = lon_str + lat_str
 
                     # Metadata and geometry generation (called first to get the merged geometry)
-                    temp_filename = f"{self.SENSOR_CODE}_{res_str}_{start_date}_{end_date}_{dms_code}_BM.tif"
+                    temp_filename = (
+                        f"{self.SENSOR_CODE}_{res_str}_{start_date}_{end_date}_{dms_code}_BM.tif"
+                    )
 
                     meta_dict, unified_geom = self.build_metadata_dict(
-                        out_4326, res_5070, temp_filename, res_m_float, res_txt, dms_code,
-                        x, y, "", [], [], start_date, end_date
+                        out_4326,
+                        res_5070,
+                        temp_filename,
+                        res_m_float,
+                        res_txt,
+                        dms_code,
+                        x,
+                        y,
+                        "",
+                        [],
+                        [],
+                        start_date,
+                        end_date,
                     )
 
                     # HUC overlay via the ArcGIS REST service (geometry is in final_crs)
@@ -393,7 +431,7 @@ class HwmProcessor:
                     meta_dict["River Basin Name"] = name_list
                     meta_dict["State"] = f"{state_list}, USA" if state_list else "USA"
                     meta_dict["Description"] = (
-                       f"The Flood Inundation Map (FIM) was generated using USGS High Water Marks acquired "
+                        f"The Flood Inundation Map (FIM) was generated using USGS High Water Marks acquired "
                         f"for the {start_date}-{end_date} flood with a spatial resolution of {res_txt}. "
                         f"The corresponding HUC IDs are {huc8_list}"
                     )
@@ -403,7 +441,9 @@ class HwmProcessor:
                     destination_folder = BASE_DEST / folder_name
                     destination_folder.mkdir(parents=True, exist_ok=True)
 
-                    new_filename = f"{self.SENSOR_CODE}_{res_str}_{start_date}_{end_date}_{dms_code}_BM.tif"
+                    new_filename = (
+                        f"{self.SENSOR_CODE}_{res_str}_{start_date}_{end_date}_{dms_code}_BM.tif"
+                    )
                     new_path = destination_folder / new_filename
 
                     shutil.copy2(out_4326, new_path)
@@ -424,6 +464,7 @@ class HwmProcessor:
                 except Exception as e:
                     self.log(f"Error processing {tif.name}: {e}")
                     import traceback
+
                     traceback.print_exc()
 
             self.log("Done.")

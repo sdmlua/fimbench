@@ -1,6 +1,6 @@
 [project]
 name = "fimbench"
-version = "0.1.0"
+version = "0.1.1"
 description = "Flood inundation map (FIM) benchmarking utilities: preprocessing the floodmap to a standardized format before uploading to the FIMbench database, S3 database interaction, and querying for FIMbench."
 readme = "README.md"
 requires-python = ">=3.10"

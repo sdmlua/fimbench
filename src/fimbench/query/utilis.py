@@ -230,12 +230,7 @@ def _pretty_date_for_print(rec: Dict[str, Any]) -> str:
     # HWM: show date range
     start = rec.get("start_date_ymd")
     end = rec.get("end_date_ymd")
-    if (
-        isinstance(start, str)
-        and start.strip()
-        and isinstance(end, str)
-        and end.strip()
-    ):
+    if isinstance(start, str) and start.strip() and isinstance(end, str) and end.strip():
         return f"{start.strip()} to {end.strip()}"
 
     # Tier 4 (synthetic/BLE): no event date
@@ -408,9 +403,7 @@ def _tier_summary(records: List[Dict[str, Any]]) -> str:
     return ", ".join(parts)
 
 
-def format_records_for_print(
-    records: List[Dict[str, Any]], context: Optional[str] = None
-) -> str:
+def format_records_for_print(records: List[Dict[str, Any]], context: Optional[str] = None) -> str:
     if not records:
         ctx = context or "your filters"
         return f"Benchmark FIMs were not matched for {ctx}."
@@ -636,19 +629,13 @@ def find_fims(
     # Tier filter - normalize both sides for comparison
     if tier:
         target_t = _normalize_tier_for_comparison(tier)
-        recs = [
-            r
-            for r in recs
-            if _normalize_tier_for_comparison(_tier_label(r)) == target_t
-        ]
+        recs = [r for r in recs if _normalize_tier_for_comparison(_tier_label(r)) == target_t]
 
     # Return period filter (Tier 4 only)
     if return_period is not None:
         trp = int(return_period)
         recs = [
-            r
-            for r in recs
-            if r.get("return_period") is not None and int(r["return_period"]) == trp
+            r for r in recs if r.get("return_period") is not None and int(r["return_period"]) == trp
         ]
 
     # Filename filter

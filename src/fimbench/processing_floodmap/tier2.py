@@ -39,8 +39,17 @@ class Tier2Processor:
     BLOCK_SIZE = 512
     SIMPLIFY_TOL = 0.0001  # ~11 m at the equator
 
-    def __init__(self, *, sensor_code=None, full_form=None, source=None, quality=None,
-                 nodata_val=None, block_size=None, simplify_tol=None):
+    def __init__(
+        self,
+        *,
+        sensor_code=None,
+        full_form=None,
+        source=None,
+        quality=None,
+        nodata_val=None,
+        block_size=None,
+        simplify_tol=None,
+    ):
         # Class attributes are the defaults.
         if sensor_code is not None:
             self.SENSOR_CODE = sensor_code
@@ -96,7 +105,7 @@ class Tier2Processor:
                 tiled=True,
                 blockxsize=block_size,
                 blockysize=block_size,
-                compress="lzw"
+                compress="lzw",
             )
 
             with rasterio.open(output_tif, "w", **profile) as dst:
@@ -116,16 +125,19 @@ class Tier2Processor:
 
         with rasterio.open(input_file) as src:
             transform, width, height = calculate_default_transform(
-                src.crs, f"EPSG:{target_epsg}", src.width, src.height, *src.bounds)
+                src.crs, f"EPSG:{target_epsg}", src.width, src.height, *src.bounds
+            )
 
             metadata = src.meta.copy()
-            metadata.update({
-                "crs": f"EPSG:{target_epsg}",
-                "transform": transform,
-                "width": width,
-                "height": height,
-                "compress": "lzw"
-            })
+            metadata.update(
+                {
+                    "crs": f"EPSG:{target_epsg}",
+                    "transform": transform,
+                    "width": width,
+                    "height": height,
+                    "compress": "lzw",
+                }
+            )
 
             with rasterio.open(output_file, "w", **metadata) as dst:
                 for i in range(1, src.count + 1):
@@ -136,7 +148,7 @@ class Tier2Processor:
                         src_crs=src.crs,
                         dst_transform=transform,
                         dst_crs=f"EPSG:{target_epsg}",
-                        resampling=Resampling.nearest
+                        resampling=Resampling.nearest,
                     )
         return output_file
 
@@ -146,7 +158,7 @@ class Tier2Processor:
             res_x, res_y = src.res
             avg_res = (res_x + res_y) / 2.0
             rounded_res = round(avg_res, 1)
-            res_str = f"{str(rounded_res).replace('.', '_')}m"   # e.g., 10.0 -> "10_0m"
+            res_str = f"{str(rounded_res).replace('.', '_')}m"  # e.g., 10.0 -> "10_0m"
             res_txt = f"{rounded_res:.2f} m"
         return rounded_res, res_str, res_txt
 
@@ -160,20 +172,17 @@ class Tier2Processor:
             data = src.read(1)
             class1_count = np.sum(data == 1)
             class2_count = np.sum(data == 2)
-            ratio = (
-                class1_count / class2_count
-                if class2_count != 0 else np.nan
-            )
+            ratio = class1_count / class2_count if class2_count != 0 else np.nan
 
         return centroid_x, centroid_y, crs, b, class1_count, class2_count, ratio
 
     # Decimal degrees to DMS, e.g. 95 31'44" W and 31 04'36" N -> 953144W310436N
     def decimal_to_dms_str(self, dec, is_lat=True):
-        direction = ''
+        direction = ""
         if is_lat:
-            direction = 'N' if dec >= 0 else 'S'
+            direction = "N" if dec >= 0 else "S"
         else:
-            direction = 'E' if dec >= 0 else 'W'
+            direction = "E" if dec >= 0 else "W"
 
         dec = abs(dec)
         degrees = int(dec)
@@ -193,13 +202,13 @@ class Tier2Processor:
 
         # YYYYMMDD with optional T/_ separator and any length time digits
         m_iso = re.search(
-            r'(?P<date>'
-            r'20\d{2}'                    # Year
-            r'(?:0[1-9]|1[0-2])'          # Month
-            r'(?:0[1-9]|[12]\d|3[01])'    # Day
-            r')'
-            r'(?:[Tt_](?P<time>\d+))?',   # Time: any number of digits
-            s
+            r"(?P<date>"
+            r"20\d{2}"  # Year
+            r"(?:0[1-9]|1[0-2])"  # Month
+            r"(?:0[1-9]|[12]\d|3[01])"  # Day
+            r")"
+            r"(?:[Tt_](?P<time>\d+))?",  # Time: any number of digits
+            s,
         )
 
         if m_iso:
@@ -209,20 +218,14 @@ class Tier2Processor:
 
         # YYYY-MM-DD or YYYY_MM_DD
         m_sep = re.search(
-            r'(?P<y>20\d{2})[-_]'
-            r'(?P<m>0[1-9]|1[0-2])[-_]'
-            r'(?P<d>0[1-9]|[12]\d|3[01])',
-            s
+            r"(?P<y>20\d{2})[-_]" r"(?P<m>0[1-9]|1[0-2])[-_]" r"(?P<d>0[1-9]|[12]\d|3[01])", s
         )
         if m_sep:
             return f"{m_sep.group('y')}{m_sep.group('m')}{m_sep.group('d')}"
 
         # DD-MM-YYYY or MM-DD-YYYY
         m_rev = re.search(
-            r'(?P<d>0[1-9]|[12]\d|3[01])[-_]'
-            r'(?P<m>0[1-9]|1[0-2])[-_]'
-            r'(?P<y>20\d{2})',
-            s
+            r"(?P<d>0[1-9]|[12]\d|3[01])[-_]" r"(?P<m>0[1-9]|1[0-2])[-_]" r"(?P<y>20\d{2})", s
         )
         if m_rev:
             return f"{m_rev.group('y')}{m_rev.group('m')}{m_rev.group('d')}"
@@ -230,7 +233,20 @@ class Tier2Processor:
         return default
 
     def build_metadata_dict(
-        self, src_4326, src_5070, new_filename, res_m_float, res_txt, dms_code, x, y, state_list, huc8_list, name_list, flood_date, ratio
+        self,
+        src_4326,
+        src_5070,
+        new_filename,
+        res_m_float,
+        res_txt,
+        dms_code,
+        x,
+        y,
+        state_list,
+        huc8_list,
+        name_list,
+        flood_date,
+        ratio,
     ):
         with rasterio.open(src_4326) as src:
             meta = {
@@ -247,7 +263,7 @@ class Tier2Processor:
                     "xmin": src.bounds.left,
                     "ymin": src.bounds.bottom,
                     "xmax": src.bounds.right,
-                    "ymax": src.bounds.top
+                    "ymax": src.bounds.top,
                 },
                 "DMS_Code_centroid": dms_code,
                 "Projection": src.crs.to_string() if src.crs else "Unknown",
@@ -268,8 +284,8 @@ class Tier2Processor:
                     "1. Cohen, S., Baruah, A., Nikrou, P., Tian, D., & Liu, H. (2025). Toward robust evaluations of flood inundation predictions using remote sensing derived benchmark maps. Water Resources Research, 61(8), e2024WR039574.",
                     "2. Munasinghe, D., Cohen, S., Tian, D., Liu, H., Baruah, A., and Devi, D. (2025). A Database of Flood Maps using high-resolution Airborne Imagery and Machine Learning Models. In: CIROH Developers' Conference, May 28-30, 2025.",
                     "3. Devi, D., Dhital, S., Munasinghe, D., Cohen, S., Baruah, A., Chen, Y., ... & Pruitt, C. (2025). A Framework for the Evaluation of Flood Inundation Predictions Over Extensive Benchmark Databases.",
-                    "4. Tian.D, Liu.H,  Wang.L, Cohen.S, Thapa.P (2024).Enhancing satellite image-derived flood maps with hydrologically guided region growing method and high-resolution DEMs.Chapman Conference on Remote Sensing of the Water Cycle"
-                ]
+                    "4. Tian.D, Liu.H,  Wang.L, Cohen.S, Thapa.P (2024).Enhancing satellite image-derived flood maps with hydrologically guided region growing method and high-resolution DEMs.Chapman Conference on Remote Sensing of the Water Cycle",
+                ],
             }
         with rasterio.open(src_5070) as src_geom:
             arr = src_geom.read(1, masked=True)
@@ -277,10 +293,8 @@ class Tier2Processor:
             mask = arr > 0  # 1 is flood, 0 is dry
 
             results = (
-                {'properties': {'raster_val': v}, 'geometry': s}
-                for i, (s, v) in enumerate(
-                    shapes(arr, mask=mask, transform=src_geom.transform)
-                )
+                {"properties": {"raster_val": v}, "geometry": s}
+                for i, (s, v) in enumerate(shapes(arr, mask=mask, transform=src_geom.transform))
             )
 
         geoms = list(results)
@@ -292,14 +306,22 @@ class Tier2Processor:
         gdf1.set_crs(geom_crs, inplace=True)
 
         if self.SIMPLIFY_TOL:
-            gdf1['geometry'] = gdf1.simplify(self.SIMPLIFY_TOL, preserve_topology=True)
-            gdf1['geometry'] = gdf1.make_valid()
+            gdf1["geometry"] = gdf1.simplify(self.SIMPLIFY_TOL, preserve_topology=True)
+            gdf1["geometry"] = gdf1.make_valid()
 
         unified_geom = unary_union(gdf1.geometry)
 
         return meta, unified_geom
 
-    def raster_to_polygon(self, in_raster, gpkg_path, metadata_row, valid_classes=(0, 1, 2), nodata=None, connectivity=8):
+    def raster_to_polygon(
+        self,
+        in_raster,
+        gpkg_path,
+        metadata_row,
+        valid_classes=(0, 1, 2),
+        nodata=None,
+        connectivity=8,
+    ):
         nodata = self.NODATA_VAL if nodata is None else nodata
         in_raster = Path(in_raster)
         with rasterio.open(in_raster) as src:
@@ -379,7 +401,9 @@ class Tier2Processor:
             for tif in tif_list:
                 # Resolve the flood date (outside the per-file try so a single
                 # un-datable file stops, while a folder run skips and continues).
-                file_flood_date = flood_date if flood_date is not None else self.infer_flood_date_from_path(tif)
+                file_flood_date = (
+                    flood_date if flood_date is not None else self.infer_flood_date_from_path(tif)
+                )
                 if file_flood_date is None:
                     msg = f"Could not infer flood_date from {tif.name}; pass flood_date=YYYYMMDD."
                     if is_single:
@@ -397,17 +421,32 @@ class Tier2Processor:
                     res_m_float, res_str, res_txt = self.get_resolution_string(out_5070)
 
                     # Centroid (4326) + DMS
-                    x, y, raster_crs, b, class1_count, class2_count, ratio = self.get_raster_centroid(out_4326)
+                    x, y, raster_crs, b, class1_count, class2_count, ratio = (
+                        self.get_raster_centroid(out_4326)
+                    )
                     lon_str = self.decimal_to_dms_str(x, is_lat=False)
                     lat_str = self.decimal_to_dms_str(y, is_lat=True)
                     dms_code = lon_str + lat_str
 
                     # Metadata and geometry generation
-                    temp_filename = f"{self.SENSOR_CODE}_{res_str}_{file_flood_date}_{dms_code}_BM.tif"
+                    temp_filename = (
+                        f"{self.SENSOR_CODE}_{res_str}_{file_flood_date}_{dms_code}_BM.tif"
+                    )
 
                     meta_dict, unified_geom = self.build_metadata_dict(
-                        out_4326, out_5070, temp_filename, res_m_float, res_txt, dms_code,
-                        x, y, "", [], [], file_flood_date, ratio
+                        out_4326,
+                        out_5070,
+                        temp_filename,
+                        res_m_float,
+                        res_txt,
+                        dms_code,
+                        x,
+                        y,
+                        "",
+                        [],
+                        [],
+                        file_flood_date,
+                        ratio,
                     )
 
                     # HUC overlay via the ArcGIS REST service (unified_geom is in EPSG:5070)
@@ -418,7 +457,7 @@ class Tier2Processor:
                     meta_dict["River Basin Name"] = name_list
                     meta_dict["State"] = f"{state_list}, USA" if state_list else "USA"
                     meta_dict["Description"] = (
-                       f"The Flood Inundation Map (FIM) was generated using Planet Scope Scene imagery combined with a gap-filled algorithm "
+                        f"The Flood Inundation Map (FIM) was generated using Planet Scope Scene imagery combined with a gap-filled algorithm "
                         f"for the {file_flood_date} flood with a spatial resolution of {res_txt}. "
                         f"The corresponding HUC IDs are {huc8_list}"
                     )
@@ -428,7 +467,9 @@ class Tier2Processor:
                     destination_folder = BASE_DEST / folder_name
                     destination_folder.mkdir(parents=True, exist_ok=True)
 
-                    new_filename = f"{self.SENSOR_CODE}_{res_str}_{file_flood_date}_{dms_code}_BM.tif"
+                    new_filename = (
+                        f"{self.SENSOR_CODE}_{res_str}_{file_flood_date}_{dms_code}_BM.tif"
+                    )
                     new_path = destination_folder / new_filename
 
                     shutil.copy2(out_4326, new_path)
@@ -449,6 +490,7 @@ class Tier2Processor:
                 except Exception as e:
                     self.log(f"Skipped {tif.name} due to error: {e}")
                     import traceback
+
                     traceback.print_exc()
 
             self.log("Done.")

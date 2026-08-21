@@ -14,9 +14,9 @@ from pathlib import Path
 import fimbench
 
 out_dir = Path("./out")
-aws_access_key_id = None          # None -> use the device's configured credentials
+aws_access_key_id = None  # None -> use the device's configured credentials
 aws_secret_access_key = None
-region = None                     # e.g. "us-east-1"
+region = None  # e.g. "us-east-1"
 
 
 def test_build_catalog():

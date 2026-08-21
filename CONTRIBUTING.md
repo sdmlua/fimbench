@@ -75,6 +75,26 @@ pytest
 
 Please add or update tests for any behavior you change.
 
+## Building a release
+
+Bump `version` in `pyproject.toml`, then build with:
+
+```bash
+make build
+```
+
+Use this instead of a bare `uv build`. `uv build` *appends* to `dist/`, so every
+past version's wheel and sdist accumulate there — `dist/` keeps growing, and a
+later `twine upload dist/*` would try to re-publish old releases. `make build`
+(a thin wrapper around `scripts/build.sh`) wipes `dist/` first, so it always
+holds exactly the current version's two files.
+
+`dist/` is intentionally **not** git-ignored, so the freshly built artifacts show
+up in `git status` and you can see what you are about to upload. Leave them
+untracked — releases go to PyPI, not into git history.
+
+Use `make clean` to remove all build output and caches.
+
 ## Commit messages and pull requests
 
 - Write clear, imperative commit messages (e.g. "add GeoPackage writer").
