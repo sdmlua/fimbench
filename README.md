@@ -42,7 +42,7 @@ In one toolkit, FIMbench **standardizes** raw benchmark flood maps to a common f
 builds the **tiles and web content** consumed by the GUI, and **publishes** everything
 into the database. The published data is served through the
 **[FIM Database](https://sdmlab.ciroh.org/index.html#FIM_Database/)** and explored
-interactively in the live **[FIMbench GUI](https://tethys.ciroh.org/apps/fimbench-gui/)**.
+interactively in the live **[FIMbench GUI](https://fimbench.tethys.ciroh.org)**.
 
 ### How the data is created
 
@@ -80,7 +80,7 @@ fimbench/
 
 Alongside programmatic access, the benchmark database can be explored visually through
 the live FIMbench GUI, built on the CIROH Tethys Platform. Explore it at
-**[tethys.ciroh.org/apps/fimbench-gui](https://tethys.ciroh.org/apps/fimbench-gui/)**
+**[fimbench.tethys.ciroh.org](https://fimbench.tethys.ciroh.org)**
 and read more in the **[GUI docs](https://tethys.ciroh.org/apps/fimbench-gui/docs)**.
 
 <div align="center">
